@@ -60,3 +60,7 @@ logs/
 # Allow ONLY the one in the root directory
 !CLAUDE.md
 
+# Node / Next.js frontend
+node_modules/
+frontend/.next/
+frontend/out/
