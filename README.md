@@ -109,15 +109,10 @@ docker compose -f infra/docker-compose.yml up -d
 
 ## Team
 
-<img src="https://upload.wikimedia.org/wikipedia/en/thumb/9/99/University_of_Central_Florida_logo.svg/200px-University_of_Central_Florida_logo.svg.png" height="36" alt="UCF">
+### ![UCF](https://img.shields.io/badge/UCF-Knights-000000?style=flat-square&labelColor=FFC904) Pablo Molina
 
-- Pablo Molina
-- Sai Ramineni
+### ![UCF](https://img.shields.io/badge/UCF-Knights-000000?style=flat-square&labelColor=FFC904) Saicharan Ramineni
 
-<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Florida_International_University_logo.svg/200px-Florida_International_University_logo.svg.png" height="36" alt="FIU">
+### ![FIU](https://img.shields.io/badge/FIU-Panthers-081E3F?style=flat-square&labelColor=B6862C) Gabriel Suarez
 
-- Gabriel Suarez
-
-<img src="https://upload.wikimedia.org/wikipedia/en/thumb/3/3b/University_of_South_Florida_logo.svg/200px-University_of_South_Florida_logo.svg.png" height="36" alt="USF">
-
-- Andres Dominguez
+### ![USF](https://img.shields.io/badge/USF-Bulls-006747?style=flat-square&labelColor=CFC493) Andres Dominguez
