@@ -66,7 +66,7 @@ run.py                         create — entry point
 - Create: `tests/__init__.py`, `tests/conftest.py`, `tests/sandbox/__init__.py`, `tests/agents/__init__.py`
 - Create: `run.py`
 
-- [ ] **Step 1: Create all `__init__.py` files**
+- [x] **Step 1: Create all `__init__.py` files**
 
 ```bash
 touch sandbox/__init__.py sandbox/static/__init__.py sandbox/dynamic/__init__.py
@@ -74,7 +74,7 @@ touch agents/__init__.py
 touch tests/__init__.py tests/sandbox/__init__.py tests/agents/__init__.py
 ```
 
-- [ ] **Step 2: Create `tests/conftest.py`**
+- [x] **Step 2: Create `tests/conftest.py`**
 
 ```python
 """Shared pytest fixtures for Pantheon tests."""
@@ -96,7 +96,7 @@ def sample_js_b64(sample_js_bytes: bytes) -> str:
     return base64.b64encode(sample_js_bytes).decode()
 ```
 
-- [ ] **Step 3: Create `run.py`**
+- [x] **Step 3: Create `run.py`**
 
 ```python
 """Pantheon entry point — starts all services."""
@@ -131,7 +131,7 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 4: Install dependencies and verify**
+- [x] **Step 4: Install dependencies and verify**
 
 ```bash
 uv sync
@@ -140,7 +140,7 @@ uv run python -c "import fastapi, docker, pydantic; print('deps ok')"
 
 Expected output: `deps ok`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add sandbox/__init__.py sandbox/static/__init__.py sandbox/dynamic/__init__.py \
@@ -157,7 +157,7 @@ git commit -m "chore: project scaffolding and entry point"
 - Create: `sandbox/static/extractor.py`
 - Create: `tests/sandbox/test_extractor.py`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 ```python
 # tests/sandbox/test_extractor.py
@@ -212,7 +212,7 @@ def test_extract_ports() -> None:
     assert 4444 in result.ports or 8443 in result.ports
 ```
 
-- [ ] **Step 2: Run tests — verify they fail**
+- [x] **Step 2: Run tests — verify they fail**
 
 ```bash
 uv run pytest tests/sandbox/test_extractor.py -v
@@ -220,7 +220,7 @@ uv run pytest tests/sandbox/test_extractor.py -v
 
 Expected: all tests fail with `ModuleNotFoundError` or `ImportError`.
 
-- [ ] **Step 3: Implement `sandbox/static/extractor.py`**
+- [x] **Step 3: Implement `sandbox/static/extractor.py`**
 
 ```python
 """Static IOC extraction from malware source text."""
@@ -336,7 +336,7 @@ def _extract_domain(url: str) -> str | None:
     return match.group(1) if match else None
 ```
 
-- [ ] **Step 4: Run tests — verify they pass**
+- [x] **Step 4: Run tests — verify they pass**
 
 ```bash
 uv run pytest tests/sandbox/test_extractor.py -v
@@ -344,7 +344,7 @@ uv run pytest tests/sandbox/test_extractor.py -v
 
 Expected: all 7 tests pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add sandbox/static/extractor.py tests/sandbox/test_extractor.py
@@ -359,7 +359,7 @@ git commit -m "feat(sandbox): static IOC extractor with regex patterns"
 - Create: `sandbox/static/deobfuscator.py`
 - Create: `tests/sandbox/test_deobfuscator.py`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 ```python
 # tests/sandbox/test_deobfuscator.py
@@ -402,7 +402,7 @@ def test_deobfuscation_result_summary() -> None:
     assert result.summary_text  # non-empty
 ```
 
-- [ ] **Step 2: Run to verify failures**
+- [x] **Step 2: Run to verify failures**
 
 ```bash
 uv run pytest tests/sandbox/test_deobfuscator.py -v
@@ -410,7 +410,7 @@ uv run pytest tests/sandbox/test_deobfuscator.py -v
 
 Expected: all fail with `ModuleNotFoundError`.
 
-- [ ] **Step 3: Implement `sandbox/static/deobfuscator.py`**
+- [x] **Step 3: Implement `sandbox/static/deobfuscator.py`**
 
 ```python
 """JS deobfuscation utilities — extracts strings from _0x-obfuscated source."""
@@ -485,7 +485,7 @@ def extract_readable_strings(data: bytes, min_length: int = 8) -> list[str]:
     return list(dict.fromkeys(matches))
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 ```bash
 uv run pytest tests/sandbox/test_deobfuscator.py -v
@@ -493,7 +493,7 @@ uv run pytest tests/sandbox/test_deobfuscator.py -v
 
 Expected: all 5 tests pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add sandbox/static/deobfuscator.py tests/sandbox/test_deobfuscator.py
@@ -508,7 +508,7 @@ git commit -m "feat(sandbox): JS deobfuscator — string array extraction and re
 - Create: `sandbox/static/gemini_analyst.py`
 - Create: `tests/sandbox/test_gemini_analyst.py`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 ```python
 # tests/sandbox/test_gemini_analyst.py
@@ -556,13 +556,13 @@ async def test_analyze_handles_malformed_json(mock_gemini_response: str) -> None
     assert report.risk_level in ("low", "medium", "high", "critical")
 ```
 
-- [ ] **Step 2: Verify failures**
+- [x] **Step 2: Verify failures**
 
 ```bash
 uv run pytest tests/sandbox/test_gemini_analyst.py -v
 ```
 
-- [ ] **Step 3: Implement `sandbox/static/gemini_analyst.py`**
+- [x] **Step 3: Implement `sandbox/static/gemini_analyst.py`**
 
 ```python
 """Gemini-powered malware analysis — sends deobfuscated content for behavioral inference."""
@@ -685,7 +685,7 @@ def _safe_risk(value: str) -> RiskLevel:  # type: ignore[return]
     return "high"
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 ```bash
 uv run pytest tests/sandbox/test_gemini_analyst.py -v
@@ -693,7 +693,7 @@ uv run pytest tests/sandbox/test_gemini_analyst.py -v
 
 Expected: both tests pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add sandbox/static/gemini_analyst.py tests/sandbox/test_gemini_analyst.py
@@ -709,7 +709,7 @@ git commit -m "feat(sandbox): Gemini analyst — deobfuscated JS to ThreatReport
 
 No Python tests for this file — it runs inside Docker. Verified manually in Task 6.
 
-- [ ] **Step 1: Create `sandbox/dynamic/harness.js`**
+- [x] **Step 1: Create `sandbox/dynamic/harness.js`**
 
 ```javascript
 /**
@@ -820,7 +820,7 @@ try {
 process.stdout.write(JSON.stringify(interceptLog));
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add sandbox/dynamic/harness.js
@@ -835,7 +835,7 @@ git commit -m "feat(sandbox): Node.js instrumentation harness for dynamic analys
 - Create: `sandbox/dynamic/manager.py`
 - Create: `tests/sandbox/test_manager.py`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 ```python
 # tests/sandbox/test_manager.py
@@ -894,13 +894,13 @@ def test_container_removed_on_error(mock_docker_client: MagicMock) -> None:
     mock_docker_client.containers.create.return_value.remove.assert_called_once_with(force=True)
 ```
 
-- [ ] **Step 2: Verify failures**
+- [x] **Step 2: Verify failures**
 
 ```bash
 uv run pytest tests/sandbox/test_manager.py -v
 ```
 
-- [ ] **Step 3: Implement `sandbox/dynamic/manager.py`**
+- [x] **Step 3: Implement `sandbox/dynamic/manager.py`**
 
 ```python
 """Docker-based dynamic malware analysis — runs sample in an isolated container."""
@@ -1002,7 +1002,7 @@ def _add_bytes_to_tar(tar: tarfile.TarFile, name: str, data: bytes) -> None:
     tar.addfile(info, io.BytesIO(data))
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 ```bash
 uv run pytest tests/sandbox/test_manager.py -v
@@ -1010,7 +1010,7 @@ uv run pytest tests/sandbox/test_manager.py -v
 
 Expected: all 4 tests pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add sandbox/dynamic/manager.py tests/sandbox/test_manager.py
@@ -1025,7 +1025,7 @@ git commit -m "feat(sandbox): Docker sandbox manager with hardened container fla
 - Create: `sandbox/dynamic/parser.py`
 - Create: `tests/sandbox/test_parser.py`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 ```python
 # tests/sandbox/test_parser.py
@@ -1069,13 +1069,13 @@ def test_parse_to_behavior_strings() -> None:
     assert any("powershell" in s for s in strings)
 ```
 
-- [ ] **Step 2: Verify failures**
+- [x] **Step 2: Verify failures**
 
 ```bash
 uv run pytest tests/sandbox/test_parser.py -v
 ```
 
-- [ ] **Step 3: Implement `sandbox/dynamic/parser.py`**
+- [x] **Step 3: Implement `sandbox/dynamic/parser.py`**
 
 ```python
 """Converts harness.js JSON intercept log to structured behavioral indicators."""
@@ -1153,7 +1153,7 @@ def _first_arg(args: list[str]) -> str:
     return args[0].strip('"\'') if args else ""
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 ```bash
 uv run pytest tests/sandbox/test_parser.py -v
@@ -1161,7 +1161,7 @@ uv run pytest tests/sandbox/test_parser.py -v
 
 Expected: all 5 tests pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add sandbox/dynamic/parser.py tests/sandbox/test_parser.py

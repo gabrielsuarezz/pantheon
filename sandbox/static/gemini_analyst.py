@@ -56,10 +56,11 @@ class GeminiAnalyst:
 
     async def _call_gemini(self, prompt: str) -> str:
         response = await self._client.aio.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash",
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
+                thinking_config=types.ThinkingConfig(thinking_budget=1024),
             ),
         )
         return response.text

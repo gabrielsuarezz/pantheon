@@ -58,7 +58,7 @@ logs/
 # Ignore all CLAUDE.md files in subdirectories
 **/CLAUDE.md
 # Allow ONLY the one in the root directory
-!CLAUDE.md
+!/CLAUDE.md
 
 # Node / Next.js frontend
 node_modules/
