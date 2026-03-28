@@ -1,0 +1,70 @@
+services:
+  sandbox:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.sandbox
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - samples:/tmp/samples
+      - db:/app/data
+    environment:
+      - PANTHEON_DB_PATH=/app/data/pantheon.db
+    networks:
+      - internal
+    env_file: ../.env
+    restart: unless-stopped
+
+  agents:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.agents
+    ports:
+      - "8001:8001"
+    depends_on:
+      - sandbox
+    networks:
+      - internal
+    env_file: ../.env
+    restart: unless-stopped
+
+  gateway:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.gateway
+    ports:
+      - "8000:8000"
+    depends_on:
+      - agents
+      - sandbox
+    volumes:
+      - samples:/tmp/samples
+    networks:
+      - internal
+      - public
+    env_file: ../.env
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - gateway
+    networks:
+      - public
+    restart: unless-stopped
+
+volumes:
+  samples:
+  db:      # persists pantheon.db across sandbox container restarts
+
+networks:
+  internal:
+    driver: bridge
+  public:
+    driver: bridge
