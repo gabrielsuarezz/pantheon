@@ -15,7 +15,7 @@ from typing import Any
 
 import httpx
 
-from sandbox.models import AnalyzeRequest, AnalyzeResponse, IOCReport, ThreatReport
+from sandbox.models import AnalyzeRequest, AnalyzeResponse, HealthResponse, IOCReport, ThreatReport
 
 _SANDBOX_URL: str = os.getenv("SANDBOX_API_URL", "http://sandbox:9000")
 _POLL_INTERVAL: float = 2.0
@@ -132,10 +132,11 @@ async def check_sandbox_health() -> dict[str, Any]:  # Any: health json payload
     Calls GET /sandbox/health.
 
     Returns:
-        Dict with ``status`` ("ok" or "degraded") and ``docker_available`` (bool).
+        Dict with ``status`` ("ok" or "degraded"), ``docker_available`` (bool),
+        and ``version`` (str).
     """
     async with httpx.AsyncClient(timeout=10.0) as client:
         resp = await client.get(f"{_SANDBOX_URL}/sandbox/health")
         resp.raise_for_status()
-    data: dict[str, Any] = resp.json()
-    return data
+    health = HealthResponse.model_validate(resp.json())
+    return health.model_dump()
