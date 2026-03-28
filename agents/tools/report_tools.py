@@ -13,12 +13,12 @@ from typing import Any
 from google import genai
 from google.genai import types as genai_types
 
-_MODEL: str = "gemini-2.0-flash"
+_MODEL: str = "gemini-2.5-flash"
 
 
 def _gemini_client() -> genai.Client:
-    """Return an authenticated Gemini client using GOOGLE_API_KEY."""
-    api_key: str = os.environ["GOOGLE_API_KEY"]
+    """Return an authenticated Gemini client using GEMINI_API."""
+    api_key: str = os.environ["GEMINI_API"]
     return genai.Client(api_key=api_key)
 
 

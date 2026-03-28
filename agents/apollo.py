@@ -16,6 +16,7 @@ from __future__ import annotations
 from google.adk.agents import Agent
 
 from agents.ares import ares
+from agents.model_config import APOLLO_MODEL
 from agents.tools.report_tools import (
     enrich_iocs_with_threat_intel,
     format_threat_report,
@@ -54,7 +55,7 @@ ThreatReport dict in context.
 
 apollo: Agent = Agent(
     name="apollo",
-    model="gemini-2.0-flash",
+    model=APOLLO_MODEL,
     description=(
         "IOC extraction, Gemini threat-intel enrichment, and report formatting. "
         "Fetches IOC data from the sandbox, enriches with threat intelligence, "

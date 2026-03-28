@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from google.adk.agents import Agent
 
+from agents.model_config import ARES_MODEL
 from agents.tools.remediation_tools import (
     build_full_response,
     extract_threat_summary_for_ares,
@@ -53,7 +54,7 @@ with three structured plans that a security team can act on immediately.
 
 ares: Agent = Agent(
     name="ares",
-    model="gemini-2.0-flash",
+    model=ARES_MODEL,
     description=(
         "Containment, remediation, and prevention specialist. "
         "Generates three actionable response plans from a completed threat analysis."

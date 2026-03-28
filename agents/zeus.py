@@ -2,16 +2,10 @@
 from __future__ import annotations
 
 from google.adk.agents import Agent
-from agents.model_config import ZEUS_MODEL
-from agents.athena import athena
 
-# NOTE: hades, apollo, ares are imported here once Andres's agents are ready.
-# Until then, Zeus routes everything through Athena.
-# When Andres pushes:
-#   from agents.hades import hades
-#   from agents.apollo import apollo
-#   from agents.ares import ares
-# and add them to sub_agents below.
+from agents.athena import athena
+from agents.hades import hades
+from agents.model_config import ZEUS_MODEL
 
 zeus = Agent(
     name="zeus",
@@ -49,5 +43,5 @@ Then immediately transfer to athena.
         "Root orchestrator — receives analyst requests"
         " and coordinates the Pantheon agent pipeline."
     ),
-    sub_agents=[athena],  # add hades, apollo, ares when Andres pushes
+    sub_agents=[athena, hades],
 )

@@ -16,6 +16,7 @@ from __future__ import annotations
 from google.adk.agents import Agent
 
 from agents.apollo import apollo
+from agents.model_config import HADES_MODEL
 from agents.tools.sandbox_tools import (
     check_sandbox_health,
     get_report,
@@ -61,7 +62,7 @@ Your job is to submit it to the sandbox, wait for results, and interpret them.
 
 hades: Agent = Agent(
     name="hades",
-    model="gemini-2.0-flash",
+    model=HADES_MODEL,
     description=(
         "Malware analysis agent. Submits samples to the Hephaestus sandbox, "
         "polls for results, and interprets the ThreatReport in plain language "

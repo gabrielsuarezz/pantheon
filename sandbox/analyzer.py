@@ -13,7 +13,10 @@ from sandbox.models import (
     AnalysisType,
     FileIOCs,
     IOCReport,
+    MemoryEntry,
     NetworkIOCs,
+    SimilarJob,
+    StoreMemoryResponse,
     ThreatReport,
 )
 from sandbox.static.deobfuscator import DeobfuscationResult
@@ -31,15 +34,41 @@ CREATE TABLE IF NOT EXISTS jobs (
 )
 """
 
+_DDL_MEMORY = """
+CREATE TABLE IF NOT EXISTS agent_memory (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_id      TEXT NOT NULL,
+    agent_name  TEXT NOT NULL,
+    run_number  INTEGER NOT NULL,
+    temperature REAL NOT NULL DEFAULT 0.3,
+    output      TEXT NOT NULL,
+    created_at  TEXT DEFAULT (datetime('now')),
+    UNIQUE(job_id, agent_name, run_number)
+)
+"""
+
+_DDL_FINGERPRINTS = """
+CREATE TABLE IF NOT EXISTS behavior_index (
+    job_id        TEXT PRIMARY KEY,
+    sha256        TEXT NOT NULL DEFAULT '',
+    malware_type  TEXT NOT NULL DEFAULT '',
+    behaviors_json TEXT NOT NULL,
+    risk_level    TEXT NOT NULL DEFAULT 'medium',
+    created_at    TEXT DEFAULT (datetime('now'))
+)
+"""
+
 
 class Analyzer:
     def __init__(self, db_path: str = "pantheon.db") -> None:
         self._db = sqlite3.connect(db_path, check_same_thread=False)
         self._db.execute("PRAGMA journal_mode=WAL")
         self._db.execute(_DDL)
+        self._db.execute(_DDL_MEMORY)
+        self._db.execute(_DDL_FINGERPRINTS)
         self._db.commit()
         # Lazy-initialized on first use so tests can patch _run_static/_run_dynamic
-        # without requiring GOOGLE_API_KEY or a live Docker socket at construction.
+        # without requiring GEMINI_API or a live Docker socket at construction.
         self._gemini: GeminiAnalyst | None = None
         self._docker: SandboxManager | None = None
 
@@ -134,6 +163,112 @@ class Analyzer:
         if row is None or row[0] is None:
             return None
         return IOCReport.model_validate_json(row[0])
+
+    # ------------------------------------------------------------------
+    # KnowledgeStore — agent memory + behavioral similarity
+    # ------------------------------------------------------------------
+
+    def store_memory(
+        self, job_id: str, agent_name: str, output: str, temperature: float
+    ) -> StoreMemoryResponse:
+        """Append an agent's output for one run. Run number auto-increments."""
+        row = self._db.execute(
+            "SELECT COALESCE(MAX(run_number), 0) FROM agent_memory WHERE job_id=? AND agent_name=?",
+            (job_id, agent_name),
+        ).fetchone()
+        run_number: int = row[0] + 1
+        self._db.execute(
+            "INSERT INTO agent_memory (job_id, agent_name, run_number, temperature, output)"
+            " VALUES (?, ?, ?, ?, ?)",
+            (job_id, agent_name, run_number, temperature, output),
+        )
+        self._db.commit()
+        total: int = self._db.execute(
+            "SELECT COUNT(*) FROM agent_memory WHERE job_id=? AND agent_name=?",
+            (job_id, agent_name),
+        ).fetchone()[0]
+        return StoreMemoryResponse(run_number=run_number, total_runs=total)
+
+    def load_memory(self, job_id: str, agent_name: str) -> list[MemoryEntry]:
+        """Return all stored runs for a (job_id, agent_name) pair, oldest first."""
+        rows = self._db.execute(
+            "SELECT job_id, agent_name, run_number, temperature, output, created_at"
+            " FROM agent_memory WHERE job_id=? AND agent_name=? ORDER BY run_number ASC",
+            (job_id, agent_name),
+        ).fetchall()
+        return [
+            MemoryEntry(
+                job_id=r[0],
+                agent_name=r[1],
+                run_number=r[2],
+                temperature=r[3],
+                output=r[4],
+                created_at=r[5] or "",
+            )
+            for r in rows
+        ]
+
+    def store_fingerprint(self, job_id: str) -> None:
+        """Compute and persist a behavioral fingerprint for a completed job."""
+        import json as _json
+
+        row = self._db.execute(
+            "SELECT report_json FROM jobs WHERE job_id=?", (job_id,)
+        ).fetchone()
+        if row is None:
+            return
+        report = ThreatReport.model_validate_json(row[0])
+        tags: list[str] = [b.lower().strip() for b in report.behavior]
+        tags += [d.lower() for d in report.network_iocs.domains]
+        tags += [ip for ip in report.network_iocs.ips]
+        tags += [p.lower().strip()[:60] for p in report.file_iocs.paths]
+        fingerprint = _json.dumps(sorted(set(t for t in tags if t)))
+        self._db.execute(
+            "INSERT OR REPLACE INTO behavior_index"
+            " (job_id, sha256, malware_type, behaviors_json, risk_level)"
+            " VALUES (?, ?, ?, ?, ?)",
+            (job_id, report.file_iocs.sha256, report.malware_type, fingerprint, report.risk_level),
+        )
+        self._db.commit()
+
+    def find_similar(self, job_id: str, limit: int = 5) -> list[SimilarJob]:
+        """Return jobs with behavioral similarity to job_id, sorted by score desc."""
+        import json as _json
+
+        target_row = self._db.execute(
+            "SELECT behaviors_json FROM behavior_index WHERE job_id=?", (job_id,)
+        ).fetchone()
+        if target_row is None:
+            return []
+        target: set[str] = set(_json.loads(target_row[0]))
+        if not target:
+            return []
+
+        rows = self._db.execute(
+            "SELECT job_id, malware_type, behaviors_json FROM behavior_index WHERE job_id != ?",
+            (job_id,),
+        ).fetchall()
+
+        results: list[SimilarJob] = []
+        for row in rows:
+            candidate: set[str] = set(_json.loads(row[2]))
+            intersection = target & candidate
+            union = target | candidate
+            if not union:
+                continue
+            score = len(intersection) / len(union)
+            if score >= 0.2:
+                results.append(
+                    SimilarJob(
+                        job_id=row[0],
+                        malware_type=row[1],
+                        similarity=round(score, 3),
+                        shared_behaviors=sorted(intersection)[:10],
+                    )
+                )
+
+        results.sort(key=lambda s: s.similarity, reverse=True)
+        return results[:limit]
 
     def _upsert(
         self, job_id: str, report: ThreatReport, iocs: IOCReport | None

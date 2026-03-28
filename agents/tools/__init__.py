@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from agents.tools.triage_tools import classify_threat, create_incident_ticket
+from agents.tools.memory_tools import (
+    find_similar_jobs,
+    load_prior_runs,
+    store_agent_output,
+    store_behavioral_fingerprint,
+    synthesize_prior_runs,
+)
 from agents.tools.remediation_tools import (
     build_full_response,
     extract_threat_summary_for_ares,
@@ -23,26 +29,28 @@ from agents.tools.sandbox_tools import (
     poll_report,
     submit_sample,
 )
+from agents.tools.triage_tools import classify_threat, create_incident_ticket
 
 __all__ = [
-    # triage tools (for Athena)
+    "build_full_response",
+    "check_sandbox_health",
     "classify_threat",
     "create_incident_ticket",
-    # sandbox tools
-    "submit_sample",
-    "get_report",
-    "get_iocs",
-    "poll_report",
-    "check_sandbox_health",
-    # report tools
     "enrich_iocs_with_threat_intel",
-    "format_threat_report",
-    "summarise_ioc_report",
-    "ioc_report_to_json",
-    # remediation tools
-    "generate_containment_plan",
-    "generate_remediation_plan",
-    "generate_prevention_plan",
-    "build_full_response",
     "extract_threat_summary_for_ares",
+    "find_similar_jobs",
+    "format_threat_report",
+    "generate_containment_plan",
+    "generate_prevention_plan",
+    "generate_remediation_plan",
+    "get_iocs",
+    "get_report",
+    "ioc_report_to_json",
+    "load_prior_runs",
+    "poll_report",
+    "store_agent_output",
+    "store_behavioral_fingerprint",
+    "submit_sample",
+    "summarise_ioc_report",
+    "synthesize_prior_runs",
 ]

@@ -13,6 +13,10 @@ from sandbox.models import (
     AnalyzeResponse,
     HealthResponse,
     IOCReport,
+    MemoryEntry,
+    SimilarJob,
+    StoreMemoryRequest,
+    StoreMemoryResponse,
     ThreatReport,
 )
 
@@ -66,3 +70,36 @@ def get_iocs(job_id: str) -> IOCReport:
     if iocs is None:
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found or still running")
     return iocs
+
+
+# --- KnowledgeStore endpoints ------------------------------------------------
+
+
+@app.post("/sandbox/memory", response_model=StoreMemoryResponse)
+def store_memory(request: StoreMemoryRequest) -> StoreMemoryResponse:
+    """Store an agent's output for one analysis run."""
+    return _analyzer.store_memory(
+        request.job_id, request.agent_name, request.output, request.temperature
+    )
+
+
+@app.get("/sandbox/memory/{job_id}/{agent_name}", response_model=list[MemoryEntry])
+def load_memory(job_id: str, agent_name: str) -> list[MemoryEntry]:
+    """Return all stored runs for a (job_id, agent_name) pair, oldest first."""
+    return _analyzer.load_memory(job_id, agent_name)
+
+
+@app.post("/sandbox/fingerprint/{job_id}")
+def store_fingerprint(job_id: str) -> dict[str, str]:
+    """Compute and persist a behavioral fingerprint for a completed job."""
+    report = _analyzer.get_report(job_id)
+    if report is None:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+    _analyzer.store_fingerprint(job_id)
+    return {"status": "ok", "job_id": job_id}
+
+
+@app.get("/sandbox/similar/{job_id}", response_model=list[SimilarJob])
+def find_similar(job_id: str) -> list[SimilarJob]:
+    """Return jobs with behavioral similarity to the given job."""
+    return _analyzer.find_similar(job_id)

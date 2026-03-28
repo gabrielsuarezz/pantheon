@@ -12,14 +12,14 @@ from typing import Any
 from google import genai
 from google.genai import types as genai_types
 
-_MODEL: str = "gemini-2.0-flash"
+_MODEL: str = "gemini-2.5-flash"
 
 _CONTAINMENT_PROMPT = """\
 You are an incident response engineer. A malware sample has been analysed.
 Based on the threat summary below, provide an IMMEDIATE containment plan.
 
 Requirements:
-- List concrete, actionable steps numbered 1–10 (use fewer if sufficient).
+- List concrete, actionable steps numbered 1-10 (use fewer if sufficient).
 - Focus on stopping the threat RIGHT NOW: network isolation, process kills,
   account lockouts, firewall rules, EDR quarantine actions.
 - Be specific: include exact commands or tool names where possible.
@@ -68,8 +68,8 @@ Respond in markdown with a numbered list.
 
 
 def _gemini_client() -> genai.Client:
-    """Return an authenticated Gemini client using GOOGLE_API_KEY."""
-    api_key: str = os.environ["GOOGLE_API_KEY"]
+    """Return an authenticated Gemini client using GEMINI_API."""
+    api_key: str = os.environ["GEMINI_API"]
     return genai.Client(api_key=api_key)
 
 

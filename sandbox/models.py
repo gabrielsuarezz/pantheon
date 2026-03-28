@@ -117,3 +117,45 @@ class HealthResponse(BaseModel):
     status: Literal["ok", "degraded"]
     docker_available: bool
     version: str = "0.1.0"
+
+
+# --- KnowledgeStore models ---------------------------------------------------
+
+
+class MemoryEntry(BaseModel):
+    """A single agent output stored in the KnowledgeStore."""
+
+    job_id: str
+    agent_name: str
+    run_number: int
+    temperature: float
+    output: str = Field(description="Agent's full markdown/text output for this run")
+    created_at: str = ""
+
+
+class StoreMemoryRequest(BaseModel):
+    """Request body for POST /sandbox/memory."""
+
+    job_id: str
+    agent_name: str
+    temperature: float = Field(default=0.3, description="Gemini temperature used for this run")
+    output: str = Field(description="Agent's full output to persist")
+
+
+class StoreMemoryResponse(BaseModel):
+    """Response body for POST /sandbox/memory."""
+
+    run_number: int = Field(description="1-based index of this run for the (job_id, agent_name) pair")  # noqa: E501
+    total_runs: int = Field(description="Total runs stored for this (job_id, agent_name) pair")
+
+
+class SimilarJob(BaseModel):
+    """A job with behavioral similarity to the queried job."""
+
+    job_id: str
+    malware_type: str
+    similarity: float = Field(description="Jaccard similarity score 0.0-1.0")
+    shared_behaviors: list[str] = Field(
+        default_factory=list,
+        description="Behavior strings present in both jobs",
+    )
