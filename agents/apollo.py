@@ -62,6 +62,35 @@ ThreatReport dict in context.
 - Include the full formatted threat report in your transfer message to Ares.
 - If `get_iocs` fails, proceed with the data available from the ThreatReport
   network_iocs and file_iocs fields and note the failure.
+
+## WSH JScript Dropper — Known IOC Patterns
+
+When analysing Windows Script Host (.js/.jse) droppers, explicitly check for
+and include the following IOC categories even if the sandbox did not surface
+them automatically:
+
+**File IOCs:**
+- PE executables dropped with image extensions (`.png`, `.jpg`, `.bmp`) —
+  magic bytes will be `MZ` (0x4D 0x5A) despite the extension
+- Secondary drop paths beyond the primary: check `C:\Users\Public\Libraries\`
+  in addition to `C:\Users\Public\`
+- `.url` Internet shortcut files (potential second persistence mechanism or
+  phishing redirect)
+
+**Registry IOCs:**
+- `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\` — per-user autorun,
+  no admin rights required; always include the full key path in the IOC list
+
+**Process / Behavioral IOCs:**
+- `wscript.exe` spawning `powershell.exe` — always flag this process chain
+- `powershell.exe` launched with `-Noexit -nop -c` flags and a hidden window —
+  indicates a persistent in-memory C2 loader session
+- `iex([Text.Encoding]::Unicode.GetString([Convert]::FromBase64String(...)))` —
+  fileless PowerShell execution; the decoded payload runs entirely in memory
+
+**Origin Hint:**
+- If `windows-1251` (Cyrillic Windows codepage) appears in the sample's string
+  constants, note it as a possible Russian-origin C2 infrastructure indicator.
 """
 
 apollo: Agent = Agent(
