@@ -4,249 +4,231 @@ One prompt per team member. Paste the relevant section into your Claude Code ses
 
 ---
 
-## Pablo — Infra, Docker Sandbox (Hephaestus), Zeus, Athena, Artemis
+## Pablo — Sandbox (Hephaestus), EventBus, Windows VPS Tools, Zeus, Athena, Artemis
 
     You are working on Pantheon, an AI-driven malware analysis system for HackUSF 2026.
 
-    Your domain: infra, Docker sandbox service (Hephaestus), Zeus orchestrator, Athena triage agent, Artemis sentinel daemon.
+    Your domain: Hephaestus sandbox service, WebSocket EventBus, Windows VPS monitoring tools,
+    Zeus orchestrator, Athena triage agent, Artemis sentinel daemon, infra.
 
     Start by reading these files in order:
-    1. CLAUDE.md — critical safety rules and project overview
-    2. docs/superpowers/specs/2026-03-28-pantheon-design.md — full architecture
-    3. sandbox/models.py — the API contract you must implement
-    4. pyproject.toml — uv package manager and mypy/ruff config
+    1. CLAUDE.md — critical safety rules, project overview, event system overview
+    2. docs/superpowers/specs/2026-03-28-pantheon-dashboard-design.md — the new dashboard + event system design
+    3. docs/superpowers/specs/2026-03-28-pantheon-design.md — original architecture
+    4. sandbox/models.py — the API contract
+    5. pyproject.toml — uv package manager and mypy/ruff config
 
-    Your deliverables:
+    Your new deliverables (Phase 2):
 
-    **sandbox/ — Hephaestus (FastAPI service on port 9000)**
-    - `sandbox/main.py` — FastAPI app with three endpoints:
-      - POST /sandbox/analyze — accepts AnalyzeRequest, returns AnalyzeResponse
-      - GET /sandbox/report/{job_id} — returns ThreatReport
-      - GET /sandbox/iocs/{job_id} — returns IOCReport
-      - GET /sandbox/health — health check
-    - `sandbox/analyzer.py` — orchestrates static + dynamic pipelines
-    - `sandbox/static/deobfuscator.py` — decodes _0x-prefix variable names and string arrays (javascript-obfuscator pattern)
-    - `sandbox/static/extractor.py` — regex IOC extraction: IPs, domains, Windows APIs, registry keys, file paths, URLs
-    - `sandbox/static/gemini_analyst.py` — sends deobfuscated JS chunks to Gemini 2.0 Flash with the prompt: "This is deobfuscated malware JavaScript. Identify: malware type, behavior, affected systems, IOCs, risk level. Be specific and technical."
-    - `sandbox/dynamic/manager.py` — Docker SDK container lifecycle:
-      - Pull node:18-alpine if not present
-      - Run with: --network none, --memory 256m, --cpus 0.25, --read-only, tmpfs at /tmp/work, --security-opt no-new-privileges, --cap-drop ALL
-      - Copy malware file + harness.js into container via exec
-      - Run: timeout 30 node /tmp/work/harness.js with output capture
-      - Parse stdout JSON log of intercepted calls
-      - Destroy container after analysis
-    - `sandbox/dynamic/harness.js` — Node.js instrumentation harness:
-      - Stubs WScript, ActiveXObject, WSH, Shell objects
-      - Intercepts and logs all method calls with arguments as JSON
-      - Wraps require('fs') write operations
-      - Collapses setTimeout/setInterval delays to 0
-      - Wraps the sample in a try/catch, captures errors
-      - Output: JSON array of {api, method, args, timestamp}
-    - `sandbox/dynamic/parser.py` — parses the harness JSON output into behavioral indicators
+    **sandbox/events.py** — EventBus + PantheonEvent
+    - EventBus class: asyncio pub/sub, holds set of active WebSocket connections
+      - publish(event: PantheonEvent) -> None — broadcasts to all subscribers
+      - subscribe(websocket: WebSocket) -> None — blocks, streams events until disconnect
+    - PantheonEvent, EventType, AgentName, ProcessEvent, NetworkEvent, AttackStage models
+    - See design doc Section 4 for full schema
 
-    **agents/zeus.py** — Root ADK orchestrator using google-adk Agent class
-    - Model: gemini-2.0-flash
-    - Routes new analysis requests to Athena
-    - Compiles the final response for Hermes
+    **sandbox/main.py additions**
+    - GET /ws — WebSocket endpoint, calls EventBus.subscribe()
+    - POST /events — accepts PantheonEvent, calls EventBus.publish()
+    - Single EventBus instance shared across the app (module-level singleton)
 
-    **agents/athena.py** — Triage ADK agent
-    - Tools: classify_threat(description), create_incident_ticket(title, severity, category)
-    - Classifies severity (critical/high/medium/low) and category
-    - Always transfers to Hades after creating ticket
+    **agents/tools/event_tools.py** — emit_event() helper
+    - async def emit_event(event: PantheonEvent) -> None
+      Posts to POST /events on the sandbox service
+      Fire-and-forget (do not block agent execution on event delivery failure)
 
-    **agents/artemis.py** — Idle sentinel daemon (not an ADK agent — a Python asyncio loop)
-    - Watches /tmp/samples/ for new files using watchdog or asyncio polling
-    - When a new file appears, calls the ADK runner to trigger the Zeus pipeline
-    - Reports analysis results to the configured Telegram chat ID via the Telegram bot API
-    - Stays idle between events
-
-    **infra/**
-    - `infra/docker-compose.yml` — four services: sandbox (port 9000), agents (port 8001), gateway (port 8000), nginx (port 80/443)
-    - `infra/Dockerfile.sandbox` — Python 3.12 slim + Docker socket mount
-    - `infra/Dockerfile.agents` — Python 3.12 slim
-    - `infra/Dockerfile.gateway` — Python 3.12 slim
-    - `infra/nginx.conf` — reverse proxy, proxies /telegram to gateway:8000
-    - Coordinate with Sai on infra/deploy.sh
+    **agents/tools/vps_tools.py** — Windows VPS monitoring tools (ADK tools for Hades)
+    - async def detonate_sample(sample_path: str) -> DetonationResult
+      SSH to Windows VPS, start Procmon + FakeNet captures, run wscript.exe, collect results
+    - async def run_procmon_capture(duration_seconds: int) -> list[ProcessEvent]
+    - async def run_fakenet_capture(duration_seconds: int) -> list[NetworkEvent]
+    - async def run_wireshark_capture(duration_seconds: int) -> list[NetworkEvent]
+    - Uses paramiko for SSH/SFTP
+    - Each tool emits appropriate PROCESS_EVENT / NETWORK_EVENT to the EventBus after running
+    - See CLAUDE.md Section: Windows VPS for safety requirements
 
     Rules:
     - uv is the package manager — never pip install
     - from __future__ import annotations at the top of every Python file
     - All functions fully typed, mypy --strict must pass
-    - Pydantic v2 for all models (sandbox/models.py is the contract — implement it exactly)
-    - The malware file is NEVER executed outside the Docker container
-    - Docker container for dynamic analysis must use ALL the flags above — no shortcuts
+    - Pydantic v2 for all models (sandbox/models.py is the contract)
+    - The malware file is NEVER executed outside the Docker container or the Windows VPS
+    - All VPS detonation must follow the safety checklist in CLAUDE.md before executing
 
 ---
 
-## Andres — Hades, Apollo, Ares (Analysis + Reporting + Remediation Agents)
+## Andres — Hades, Apollo, Ares + Event Emission
 
     You are working on Pantheon, an AI-driven malware analysis system for HackUSF 2026.
 
-    Your domain: Hades (malware analysis agent), Apollo (IOC extraction + threat report), Ares (containment + remediation), and all agent tools.
+    Your domain: Hades (malware analysis agent), Apollo (IOC extraction + threat report),
+    Ares (containment + remediation), all agent tools, and wiring event emission into every
+    tool call and agent handoff.
 
     Start by reading these files in order:
-    1. CLAUDE.md — critical safety rules and project overview
-    2. docs/superpowers/specs/2026-03-28-pantheon-design.md — full architecture
+    1. CLAUDE.md — critical safety rules, project overview, event system overview
+    2. docs/superpowers/specs/2026-03-28-pantheon-dashboard-design.md — the new event system design
+    3. docs/superpowers/specs/2026-03-28-pantheon-design.md — original architecture
     3. sandbox/models.py — the ThreatReport and IOCReport shapes you consume (do not modify)
     4. pyproject.toml — uv package manager and mypy/ruff config
 
-    The sandbox service (Hephaestus) runs at SANDBOX_API_URL from .env (default: http://sandbox:9000).
-    You call it via httpx. Pablo owns sandbox/ — do not touch it.
+    Your new deliverables (Phase 2):
 
-    Your deliverables:
+    **Event emission — all agent tools**
+    Every tool call in agents/tools/ must wrap its logic with:
+      - emit_event(TOOL_CALLED, agent=<name>, tool=<name>, payload={inputs}) before execution
+      - emit_event(TOOL_RESULT, agent=<name>, tool=<name>, payload={output_summary}) after
+    Every agent entry point emits AGENT_ACTIVATED.
+    Every agent exit emits AGENT_COMPLETED.
+    Every transfer_to_agent call emits HANDOFF with {from: <agent>, to: <agent>}.
+    Use emit_event() from agents/tools/event_tools.py (Pablo's file — do not modify it).
 
-    **agents/tools/sandbox_tools.py**
-    - async def submit_sample(file_path: str, job_id: str, analysis_type: AnalysisType = "both") -> AnalyzeResponse
-      Calls POST /sandbox/analyze with base64-encoded file content
-    - async def get_report(job_id: str) -> ThreatReport
-      Calls GET /sandbox/report/{job_id}, polls until status is "complete"
-    - async def get_iocs(job_id: str) -> IOCReport
-      Calls GET /sandbox/iocs/{job_id}
+    **Hades — Windows VPS integration**
+    After sandbox analysis completes, Hades calls detonate_sample() from vps_tools.py.
+    For each ProcessEvent and NetworkEvent returned, Hades emits STAGE_UNLOCKED events
+    where appropriate — e.g. confirming persistence stage, network stage, execution stage.
+    The AttackStage payload must have: stage_id, label, description, icon.
+    Do not hardcode stages — derive them from the actual monitoring tool output.
 
-    **agents/hades.py** — Malware analysis ADK agent (google-adk Agent)
-    - Model: gemini-2.0-flash
-    - Tools: submit_sample, get_report
-    - Submits the sample, waits for analysis, interprets behavioral results in plain language
-    - Response to the user: what type of malware, what it does, what systems are at risk
-    - Response must be concise — user is on Telegram/phone
-    - Transfers to Apollo after analysis
+    **KnowledgeStore tools** — already implemented, keep using them:
+    - store_agent_output, load_prior_runs, synthesize_prior_runs, find_similar_jobs,
+      store_behavioral_fingerprint
 
-    **agents/apollo.py** — IOC extraction + threat intel ADK agent
-    - Model: gemini-2.0-flash
-    - Tools: get_iocs, and a Gemini enrichment tool that takes IOCs and returns additional threat context
-    - Produces a structured threat report with all IOCs clearly listed
-    - Answers: what IPs/domains are malicious, what files were created, what registry keys were touched
-    - Transfers to Ares
-
-    **agents/ares.py** — Containment + remediation ADK agent
-    - Model: gemini-2.0-flash
-    - Tools: generate_containment_plan(report), generate_remediation_plan(report), generate_prevention_plan(report)
-    - Containment: immediate steps to stop the threat (block IPs, kill processes, isolate host)
-    - Remediation: steps to clean up and restore the system
-    - Prevention: hardening recommendations to prevent this specific attack vector in the future
-    - Returns final combined response to Zeus
-
-    **agents/tools/triage_tools.py** — used by Athena (coordinate with Pablo)
-    **agents/tools/report_tools.py** — IOC enrichment, threat intel lookups
-    **agents/tools/remediation_tools.py** — containment/remediation plan generators
+    Existing deliverables (already done, do not break):
+    - agents/tools/sandbox_tools.py — submit_sample, poll_report, get_report, get_iocs
+    - agents/tools/report_tools.py — format_threat_report, enrich_iocs_with_threat_intel
+    - agents/tools/remediation_tools.py — containment/remediation/prevention plan generators
+    - agents/hades.py, agents/apollo.py, agents/ares.py — full agent implementations
 
     Rules:
     - uv is the package manager — never pip install
     - from __future__ import annotations at top of every Python file
     - All functions fully typed, mypy --strict must pass
-    - Pydantic v2 for all models
     - All httpx calls must be async
-    - Agent responses must be plain English, maximum 4-5 sentences — user is on a phone
-    - Never log or print sensitive IOC data to stdout in production
+    - emit_event() must be fire-and-forget — never let event emission block or crash a tool
+    - Never hardcode attack chain stages — derive from real tool output
 
 ---
 
-## Gabriel — Hermes (Telegram Gateway)
+## Gabriel — Hermes (Telegram Gateway + Voice Call Mini App)
 
     You are working on Pantheon, an AI-driven malware analysis system for HackUSF 2026.
 
-    Your domain: Hermes — the Telegram bot that is the sole user interface for Pantheon.
+    Your domain: Hermes — the Telegram bot, ElevenLabs voice I/O, and the voice call Mini App.
 
     Start by reading these files in order:
     1. CLAUDE.md — critical safety rules and project overview
-    2. docs/superpowers/specs/2026-03-28-pantheon-design.md — full architecture, especially Section 4 (agent pipeline flow) and Section 6 (voice)
-    3. pyproject.toml — uv package manager and mypy/ruff config
-
-    The voice module (Sai's work) lives at voice/client.py and exposes exactly two async functions:
-      - transcribe(audio_bytes: bytes, mime_type: str) -> str
-      - speak(text: str, voice_id: str | None) -> bytes  (returns OGG/Opus bytes)
-
-    The ADK runner is initialized with Zeus as root_agent (from agents/zeus.py).
-
-    Your deliverables:
-
-    **gateway/bot.py** — Telegram bot using python-telegram-bot
-    - /start — greet user, explain Pantheon's capabilities
-    - /reset — clear the user's ADK session
-    - /status — report whether an analysis is currently running for this user
-    - Text messages -> get_agent_response(user_id, text) -> reply as text
-    - Voice messages -> voice.client.transcribe(audio_bytes) -> get_agent_response() -> voice.client.speak() -> send as Telegram voice message
-    - File uploads (.malicious, .js, .zip, .exe) — save to /tmp/samples/{user_id}/{filename}, then send "Analyzing {filename}..." and call get_agent_response(user_id, f"analyze the malware sample at /tmp/samples/{user_id}/{filename}")
-    - Send a "Pantheon is analyzing..." typing indicator during long-running operations
-    - If analysis takes more than 10 seconds, send an intermediate text update: "Analysis in progress — Hades is examining the sample..."
-
-    **gateway/session.py** — ADK session management
-    - Maps Telegram user_id (str) -> ADK session_id (str)
-    - create_or_get_session(user_id: str) -> str
-    - reset_session(user_id: str) -> None
-    - Uses InMemorySessionService from google-adk
-
-    **gateway/runner.py** — ADK runner bridge
-    - async def get_agent_response(user_id: str, text: str) -> str
-      Creates/retrieves session, sends message to Zeus via ADK Runner, collects full response string
-
-    Rules:
-    - uv is the package manager — never pip install
-    - from __future__ import annotations at top of every Python file
-    - All functions fully typed, mypy --strict must pass
-    - Pydantic v2 for config
-    - Never expose the sandbox API or raw IOC data directly to the user — all interaction goes through the ADK agents
-    - Never commit bot tokens or API keys
-    - Use python-telegram-bot's async API (ApplicationBuilder, not the sync API)
-    - Saved files in /tmp/samples/ must be readable by the sandbox service (shared Docker volume)
-
----
-
-## Sai — Muse (ElevenLabs Voice) + Vultr Deployment
-
-    You are working on Pantheon, an AI-driven malware analysis system for HackUSF 2026.
-
-    Your domain: Muse — the ElevenLabs voice module, and deploying the full stack to the Vultr server.
-
-    Start by reading these files in order:
-    1. CLAUDE.md — critical safety rules and project overview
-    2. docs/superpowers/specs/2026-03-28-pantheon-design.md — full architecture, especially Section 6 (voice) and Section 7 (infra)
-    3. infra/docker-compose.yml — what you are deploying (Pablo will write this)
+    2. docs/superpowers/specs/2026-03-28-pantheon-dashboard-design.md — demo flow (Section 2)
+    3. docs/superpowers/specs/2026-03-28-pantheon-design.md — original architecture
     4. pyproject.toml — uv package manager and mypy/ruff config
 
-    Your deliverables:
+    Your implementation is on branch hermes/gateway-voice. Key files already built:
+    - gateway/bot.py — Telegram bot (text, voice, file upload, /call command)
+    - gateway/webapp.py — FastAPI Mini App server (ElevenLabs webhooks, /call HTML)
+    - gateway/static/call.html — voice call interface inside Telegram
+    - gateway/session.py — ADK session management (user_id → session_id)
+    - gateway/runner.py — ADK runner bridge (ElevenLabs primary, Zeus fallback)
+    - voice/agent.py — ElevenLabs Conversational AI bridge (WebSocket)
 
-    **voice/client.py** — ElevenLabs TTS + STT wrapper (this is the ENTIRE interface Gabriel calls)
+    Outstanding items for Phase 2:
 
-    Public async interface — do not add more public functions than these two:
+    **Demo scenario wiring**
+    The demo narrative is: "You're a dev paged at 2AM with a critical alert. Instead of being
+    paged, you call the person who already knows what's wrong."
+    - /call opens the Mini App immediately — no extra steps
+    - The ElevenLabs agent should open with context: Zeus knows there is an active incident
+    - File upload should trigger analysis immediately without extra prompting from the user
+    - When analysis completes, Zeus should proactively send a voice message summary
 
-      async def transcribe(audio_bytes: bytes, mime_type: str = "audio/ogg") -> str
-        - Sends audio to ElevenLabs speech-to-text API
-        - Falls back to Gemini audio transcription if ElevenLabs STT returns an error
-        - Returns clean transcription string
-        - Raises TranscriptionError on total failure
+    **Dashboard link**
+    After triggering analysis (file upload or voice command), send the user a Telegram message:
+    "Watch the agents work: <DASHBOARD_URL>"
+    DASHBOARD_URL comes from WEBAPP_BASE_URL env var + /dashboard path.
 
-      async def speak(text: str, voice_id: str | None = None) -> bytes
-        - Sends text to ElevenLabs TTS API
-        - Uses ZEUS_VOICE_ID from personas.py if voice_id is None
-        - Returns OGG/Opus bytes ready to send as a Telegram voice message
-        - Raises SpeechError on failure
-
-    **voice/personas.py** — Voice configuration
-      - ZEUS_VOICE_ID: str — an authoritative, deep ElevenLabs voice
-        (Browse https://elevenlabs.io/voice-library, pick something that sounds like a command center)
-      - Configurable via ELEVENLABS_VOICE_ID env var with ZEUS_VOICE_ID as default
-
-    **voice/exceptions.py** — TranscriptionError and SpeechError (both subclass RuntimeError)
-
-    **Vultr deployment**
-    The server is provisioned and ready. Get IP + credentials from Pablo.
-
-    Steps:
-    1. SSH in, install Docker Engine + Docker Compose plugin (official Docker apt repo)
-    2. Clone the repo to /opt/pantheon
-    3. Copy .env to /opt/pantheon/.env
-    4. Run: cd /opt/pantheon && docker compose -f infra/docker-compose.yml up -d
-    5. Configure Telegram webhook: call https://api.telegram.org/bot{TOKEN}/setWebhook?url=https://{IP}/telegram
-    6. Verify all services are healthy: docker compose ps
-
-    Write infra/deploy.sh that automates steps 2-6 (assumes Docker is already installed).
+    **Emit AGENT_ACTIVATED for Hermes**
+    When Hermes receives a file or message and routes it to Zeus, emit a HERMES activation
+    event to the sandbox event bus (POST /events on SANDBOX_API_URL).
+    This makes Hermes appear as a node in the dashboard agent graph.
 
     Rules:
     - uv is the package manager — never pip install
     - from __future__ import annotations at top of every Python file
     - All functions fully typed, mypy --strict must pass
-    - All public functions must be async
-    - Never log audio bytes or transcription content
-    - ELEVENLABS_API_KEY from env only — never hardcoded
-    - OGG/Opus output format for Telegram compatibility
+    - Never expose sandbox API or raw IOC data directly to the user — all interaction via agents
+    - Never commit bot tokens or API keys
+    - Use python-telegram-bot's async API
+
+---
+
+## Sai — Dashboard, Voice Module (Muse), Deployment
+
+    You are working on Pantheon, an AI-driven malware analysis system for HackUSF 2026.
+
+    Your domain: live web dashboard (frontend/), Muse voice module, Vultr deployment.
+
+    Start by reading these files in order:
+    1. CLAUDE.md — critical safety rules and project overview
+    2. docs/superpowers/specs/2026-03-28-pantheon-dashboard-design.md — full dashboard design (your primary spec)
+    3. docs/superpowers/specs/2026-03-28-pantheon-design.md — original architecture
+    4. pyproject.toml — uv package manager and mypy/ruff config
+
+    The dashboard design doc (Section 6) is your implementation spec. Summary:
+
+    **frontend/ — Next.js + Tailwind + React Flow**
+
+    The existing dashboard has the color system, typography, and layout structure.
+    You need to replace static/hardcoded data with live WebSocket data.
+
+    frontend/src/lib/pantheon-ws.ts — WebSocket client
+    - Connects to ws://<SANDBOX_API_URL>/ws
+    - Parses incoming PantheonEvent messages
+    - Dispatches to a Zustand store (or React context)
+
+    frontend/src/lib/event-store.ts — shared state
+    - Holds: activeAgents, eventFeed, attackChain stages, processTree nodes, iocs
+    - Updated by the WebSocket client as events arrive
+
+    Components to wire up (all exist or partially exist — connect to event store):
+
+    1. Agent Node Graph (React Flow)
+       - Nodes: Zeus, Hermes, Athena, Hades, Apollo, Ares, Hephaestus, Windows VPS
+       - Node state: idle (dim) | active (glow + pulse) | complete (checkmark)
+       - Edges animate on HANDOFF events
+       - Tool call events pulse on the calling node
+       - Windows VPS node lights up when Procmon/FakeNet/Wireshark tools fire
+
+    2. Live Event Feed
+       - Renders PantheonEvents in order (auto-scroll to bottom)
+       - TOOL_CALLED rows: expandable to show inputs
+       - TOOL_RESULT rows: expandable to show output summary
+       - IOC_DISCOVERED: amber highlight
+       - NETWORK_EVENT: red highlight (C2 activity)
+       - PROCESS_EVENT: yellow highlight (filesystem/registry)
+
+    3. Attack Chain Diagram
+       - Horizontal strip of stage cards
+       - Populated from STAGE_UNLOCKED events — nothing hardcoded
+       - Placeholder "Analyzing..." cards shown before stages unlock
+       - Cards animate in (fade + slide) as they unlock
+
+    4. Process / IOC Tree
+       - Expandable tree rooted at the malware filename
+       - Branches: Files Written, Registry Keys, Processes Spawned, Network Connections
+       - Nodes appear as PROCESS_EVENT and IOC_DISCOVERED events arrive
+       - New nodes flash on entry
+
+    **Voice module (voice/client.py)** — already implemented on sai branch, merge to master.
+
+    **Deployment**
+    - Merge all branches to master before deploying
+    - Run: cd /opt/pantheon && docker compose -f infra/docker-compose.yml up -d
+    - Confirm all services healthy: docker compose ps
+    - Set Telegram webhook after deploy
+    - Dashboard accessible at /dashboard via nginx reverse proxy
+
+    Rules:
+    - All WebSocket events are the single source of truth — never fetch data from REST endpoints
+      in dashboard components
+    - Nothing in the dashboard is hardcoded — all data flows from PantheonEvent stream
+    - uv for Python dependencies, npm/pnpm for frontend
+    - SANDBOX_API_URL must be configurable via env for both local dev and production
