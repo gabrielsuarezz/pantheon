@@ -1,0 +1,64 @@
+[project]
+name = "pantheon"
+version = "0.1.0"
+description = "AI-driven malware analysis and incident response — HackUSF 2026"
+requires-python = ">=3.12"
+dependencies = [
+    "google-adk>=0.3.0",
+    "google-genai>=1.0.0",
+    "python-telegram-bot[webhooks]>=21.0",
+    "elevenlabs>=1.50.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "docker>=7.1.0",
+    "httpx>=0.28.0",
+    "python-dotenv>=1.0.0",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.7.0",
+    "watchdog>=6.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = [
+    "mypy>=1.13.0",
+    "ruff>=0.9.0",
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.25.0",
+    "types-docker>=7.0.0",
+    "types-requests>=2.32.0",
+]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_any_generics = true
+disallow_subclassing_any = true
+disallow_untyped_decorators = true
+extra_checks = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "ANN", "B", "SIM", "RUF"]
+ignore = ["ANN101", "ANN102", "ANN401"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["agents", "gateway", "voice", "sandbox"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

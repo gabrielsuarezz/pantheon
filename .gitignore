@@ -1,0 +1,54 @@
+# Environment
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# uv
+.uv/
+
+# Type checking / linting
+.mypy_cache/
+.ruff_cache/
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# MALWARE — NEVER COMMIT THESE FILES
+*.malicious
+MalwareChallenge.zip
+/tmp/
+
+# Analysis outputs (may contain sensitive IOC data)
+analysis_results/
+sandbox_outputs/
+
+# Logs
+*.log
+logs/
