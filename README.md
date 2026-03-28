@@ -10,16 +10,16 @@ Built for HackUSF 2026.
 
 A user submits a sample (file upload, text description, or voice message) through Telegram. The Hermes gateway transcribes and routes the request into a Google ADK multi-agent pipeline. Each agent is named after a Greek god and owns a specific phase of the analysis:
 
-| Agent | God | Responsibility |
-|---|---|---|
-| Orchestrator | Zeus | Routes requests, compiles final response |
-| Gateway | Hermes | Telegram bot + ElevenLabs voice I/O |
-| Triage | Athena | Classifies threat severity, opens incident ticket |
-| Analysis | Hades | Submits sample to sandbox, interprets results |
-| Intelligence | Apollo | Extracts IOCs, enriches with Gemini threat intel |
-| Response | Ares | Generates containment, remediation, and prevention plan |
-| Sandbox | Hephaestus | FastAPI service managing real Docker analysis containers |
-| Sentinel | Artemis | Background daemon — auto-triggers pipeline on new samples |
+| Agent        | God        | Responsibility                                            |
+| ------------ | ---------- | --------------------------------------------------------- |
+| Orchestrator | Zeus       | Routes requests, compiles final response                  |
+| Gateway      | Hermes     | Telegram bot + ElevenLabs voice I/O                       |
+| Triage       | Athena     | Classifies threat severity, opens incident ticket         |
+| Analysis     | Hades      | Submits sample to sandbox, interprets results             |
+| Intelligence | Apollo     | Extracts IOCs, enriches with Gemini threat intel          |
+| Response     | Ares       | Generates containment, remediation, and prevention plan   |
+| Sandbox      | Hephaestus | FastAPI service managing real Docker analysis containers  |
+| Sentinel     | Artemis    | Background daemon — auto-triggers pipeline on new samples |
 
 All voice interaction is handled by the Muse module via ElevenLabs.
 
@@ -80,12 +80,12 @@ uv run python run.py
 
 See `.env.example` for all required variables. Key ones:
 
-| Variable | Description |
-|---|---|
-| `GOOGLE_API_KEY` | Gemini API key |
-| `TELEGRAM_BOT_TOKEN` | Telegram bot token |
-| `ELEVENLABS_API_KEY` | ElevenLabs API key |
-| `SANDBOX_API_URL` | Internal URL of the Hephaestus service (default: `http://sandbox:9000`) |
+| Variable             | Description                                                             |
+| -------------------- | ----------------------------------------------------------------------- |
+| `GOOGLE_API_KEY`     | Gemini API key                                                          |
+| `TELEGRAM_BOT_TOKEN` | Telegram bot token                                                      |
+| `ELEVENLABS_API_KEY` | ElevenLabs API key                                                      |
+| `SANDBOX_API_URL`    | Internal URL of the Hephaestus service (default: `http://sandbox:9000`) |
 
 ---
 
@@ -109,4 +109,15 @@ docker compose -f infra/docker-compose.yml up -d
 
 ## Team
 
-Pablo, Andres, Gabriel, Sai — University of South Florida
+### UCF
+
+- Pablo Molina
+- Sai Ramineni
+
+### FIU
+
+- Gabriel Suarez
+
+### USF
+
+- Andres Dominguez
