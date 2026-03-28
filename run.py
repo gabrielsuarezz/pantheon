@@ -17,7 +17,7 @@ async def _run_webapp() -> None:
     """Start the FastAPI webapp for the voice-call Mini App."""
     import uvicorn
 
-    from gateway.webapp import app  # noqa: F811
+    from gateway.webapp import app
 
     port = int(os.getenv("WEBAPP_PORT", "8443"))
     config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="info")

@@ -103,7 +103,10 @@ async def tool_analyze(body: dict[str, Any]) -> JSONResponse:
     if sample_path is None:
         return JSONResponse({
             "status": "error",
-            "message": "No sample found. Upload a file through Telegram first, then ask me to analyze it.",
+            "message": (
+                "No sample found. Upload a file through Telegram first, "
+                "then ask me to analyze it."
+            ),
         })
 
     # Build an AnalyzeRequest for the sandbox.
@@ -191,7 +194,10 @@ async def tool_status(body: dict[str, Any]) -> JSONResponse:
         return JSONResponse({
             "status": "degraded",
             "docker_available": False,
-            "message": "Sandbox service is not reachable. Analysis will use the AI pipeline instead.",
+            "message": (
+                "Sandbox service is not reachable. "
+                "Analysis will use the AI pipeline instead."
+            ),
         })
 
 

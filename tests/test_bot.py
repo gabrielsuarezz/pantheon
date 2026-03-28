@@ -24,6 +24,8 @@ def _make_update(
     user_id: int = 1,
     text: str | None = None,
     voice: MagicMock | None = None,
+    video_note: MagicMock | None = None,
+    video: MagicMock | None = None,
     document: MagicMock | None = None,
 ) -> MagicMock:
     """Build a minimal mock Telegram Update."""
@@ -38,6 +40,8 @@ def _make_update(
     update.message = MagicMock()
     update.message.text = text
     update.message.voice = voice
+    update.message.video_note = video_note
+    update.message.video = video
     update.message.document = document
     return update
 
@@ -99,7 +103,9 @@ async def test_handle_text(mock_agent: AsyncMock, mock_speak: AsyncMock) -> None
 
 @patch("gateway.bot.speak", new_callable=AsyncMock, return_value=b"audio")
 @patch("gateway.bot.get_agent_response", new_callable=AsyncMock, return_value="Analysis complete")
-async def test_handle_document_accepted_ext(mock_agent: AsyncMock, mock_speak: AsyncMock, tmp_path: Path) -> None:
+async def test_handle_document_accepted_ext(
+    mock_agent: AsyncMock, mock_speak: AsyncMock, tmp_path: Path,
+) -> None:
     doc = MagicMock()
     doc.file_name = "sample.js"
     tg_file = AsyncMock()
@@ -125,6 +131,66 @@ async def test_handle_document_rejected_ext() -> None:
 
     msg: str = update.effective_chat.send_message.call_args[0][0]
     assert "Unsupported" in msg
+
+
+# ---------------------------------------------------------------------------
+# Voice / video handlers
+# ---------------------------------------------------------------------------
+
+def _make_audio_update(user_id: int = 1, media_attr: str = "voice") -> MagicMock:
+    """Build a mock Update with downloadable audio media."""
+    media = MagicMock()
+    tg_file = AsyncMock()
+    tg_file.download_as_bytearray = AsyncMock(return_value=bytearray(b"fake-audio"))
+    media.get_file = AsyncMock(return_value=tg_file)
+
+    update = _make_update(user_id=user_id, **{media_attr: media})
+    return update
+
+
+@patch("gateway.bot.speak", new_callable=AsyncMock, return_value=b"audio")
+@patch("gateway.bot.get_agent_response", new_callable=AsyncMock, return_value="agent reply")
+@patch("gateway.bot.transcribe", new_callable=AsyncMock, return_value="hello world")
+async def test_handle_voice_full_pipeline(
+    mock_transcribe: AsyncMock, mock_agent: AsyncMock, mock_speak: AsyncMock,
+) -> None:
+    update = _make_audio_update(user_id=5, media_attr="voice")
+    await bot.handle_voice(update, MagicMock())
+    mock_transcribe.assert_awaited_once()
+    mock_agent.assert_awaited_once_with("5", "hello world")
+    # Should send "I heard: ..." + agent text + voice.
+    assert update.effective_chat.send_message.await_count >= 2
+
+
+@patch("gateway.bot.speak", new_callable=AsyncMock, return_value=b"audio")
+@patch("gateway.bot.get_agent_response", new_callable=AsyncMock, return_value="reply")
+@patch("gateway.bot.transcribe", new_callable=AsyncMock, return_value="test")
+async def test_handle_video_note(
+    mock_transcribe: AsyncMock, mock_agent: AsyncMock, mock_speak: AsyncMock,
+) -> None:
+    update = _make_audio_update(user_id=6, media_attr="video_note")
+    await bot.handle_video_note(update, MagicMock())
+    mock_transcribe.assert_awaited_once()
+    mock_agent.assert_awaited_once()
+
+
+@patch("gateway.bot.transcribe", new_callable=AsyncMock, side_effect=RuntimeError("STT failed"))
+async def test_handle_voice_transcription_failure(mock_transcribe: AsyncMock) -> None:
+    update = _make_audio_update(user_id=7, media_attr="voice")
+    await bot.handle_voice(update, MagicMock())
+    # Should still send an error message to the user.
+    msg: str = update.effective_chat.send_message.call_args[0][0]
+    assert "couldn't understand" in msg.lower()
+
+
+async def test_handle_voice_no_media() -> None:
+    update = _make_update(user_id=8)
+    update.message.voice = None
+    update.message.video_note = None
+    update.message.video = None
+    await bot.handle_voice(update, MagicMock())
+    msg: str = update.effective_chat.send_message.call_args[0][0]
+    assert "couldn't read" in msg.lower()
 
 
 # ---------------------------------------------------------------------------
