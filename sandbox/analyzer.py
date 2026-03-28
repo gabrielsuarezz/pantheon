@@ -44,7 +44,7 @@ class Analyzer:
         self._docker: SandboxManager | None = None
 
     async def submit(
-        self, file_content_b64: str, filename: str, analysis_type: AnalysisType  # type: ignore[valid-type]
+        self, file_content_b64: str, filename: str, analysis_type: AnalysisType
     ) -> str:
         """Decode, analyze, persist results. Returns job_id."""
         file_bytes = base64.b64decode(file_content_b64)

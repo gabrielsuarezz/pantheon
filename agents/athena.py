@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from google.adk.agents import Agent
 
@@ -78,7 +78,7 @@ def create_incident_ticket(
         severity=severity,
         category=category,
         status="open",
-        created_at=datetime.now(timezone.utc).isoformat(),
+        created_at=datetime.now(UTC).isoformat(),
     )
     _ticket_counter += 1
     return ticket

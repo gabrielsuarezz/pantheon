@@ -16,7 +16,8 @@ from agents.athena import athena
 zeus = Agent(
     name="zeus",
     model="gemini-2.5-flash",
-    instruction="""You are Zeus, the orchestrator of Pantheon — an AI-driven malware analysis system.
+    instruction="""\
+You are Zeus, the orchestrator of Pantheon — an AI-driven malware analysis system.
 
 A security analyst is communicating with you via Telegram, using voice or text.
 
@@ -44,6 +45,9 @@ FIRST RESPONSE to a new sample:
 "Copy. Routing to Athena for triage."
 Then immediately transfer to athena.
 """,
-    description="Root orchestrator — receives analyst requests and coordinates the Pantheon agent pipeline.",
+    description=(
+        "Root orchestrator — receives analyst requests"
+        " and coordinates the Pantheon agent pipeline."
+    ),
     sub_agents=[athena],  # add hades, apollo, ares when Andres pushes
 )

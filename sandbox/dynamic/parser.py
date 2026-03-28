@@ -44,7 +44,8 @@ def parse_intercept_log(log: list[dict[str, Any]]) -> DynamicBehavior:
         behavior.raw_apis.append(f"{api}.{method}")
 
         # Command execution
-        if method in ("Run", "Exec", "ShellExecute") or "cmd.exe" in args_joined or "powershell" in args_joined.lower():
+        is_exec = method in ("Run", "Exec", "ShellExecute")
+        if is_exec or "cmd.exe" in args_joined or "powershell" in args_joined.lower():
             cmd = _first_arg(args)
             if cmd:
                 behavior.commands_executed.append(cmd.strip('"\''))

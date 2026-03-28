@@ -78,7 +78,7 @@ def compute_hashes(data: bytes) -> dict[str, str]:
     """Compute MD5 and SHA256 hashes of the given bytes."""
     return {
         "sha256": hashlib.sha256(data).hexdigest(),
-        "md5": hashlib.md5(data).hexdigest(),  # noqa: S324
+        "md5": hashlib.md5(data).hexdigest(),
     }
 
 

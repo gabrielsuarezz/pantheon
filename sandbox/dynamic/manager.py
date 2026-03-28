@@ -1,12 +1,13 @@
 """Docker-based dynamic malware analysis — runs sample in an isolated container."""
 from __future__ import annotations
 
+import contextlib
 import io
 import json
 import logging
 import tarfile
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import docker
 import docker.errors
@@ -43,13 +44,11 @@ class SandboxManager:
             return []
         finally:
             if container is not None:
-                try:
+                with contextlib.suppress(docker.errors.APIError):
                     container.remove(force=True)
-                except docker.errors.APIError:
-                    pass
 
     def _create_container(self) -> Container:
-        return cast(Container, self._client.containers.create(
+        return self._client.containers.create(
             image=_IMAGE,
             command="node /tmp/work/harness.js /tmp/work/sample.js",
             detach=True,
@@ -62,7 +61,7 @@ class SandboxManager:
             cap_drop=["ALL"],
             stdin_open=False,
             tty=False,
-        ))
+        )
 
     def _copy_files_to_container(
         self, container: Container, file_bytes: bytes
