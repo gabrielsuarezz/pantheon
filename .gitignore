@@ -40,15 +40,16 @@ coverage.xml
 .DS_Store
 Thumbs.db
 
-# MALWARE — NEVER COMMIT THE ORIGINAL .malicious FILES
-*.malicious
-MalwareChallenge.zip
+# MALWARE — ALL SAMPLES ALLOWED FOR TEAM ACCESS (PER USER REQUEST)
+# *.malicious
+# MalwareChallenge.zip
 /tmp/
 
 # Analysis outputs
-# (Allowing recovered forensic binaries and blobs per user request)
 !MALWARE/*.bin
 !MALWARE/fieldrva_blobs/
+!MALWARE/*.malicious
+!MALWARE/*.png
 sandbox_outputs/
 
 # SQLite job store (runtime artifact — created on first run by Hephaestus)
