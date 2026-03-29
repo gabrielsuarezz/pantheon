@@ -119,8 +119,8 @@ SAMPLES_DIR=/tmp/samples
         f.write(env_content)
     print("  Pushed .env")
 
-    # Also push agents/ stubs if they exist
-    for agent_file in ["agents/__init__.py", "agents/_dev_stub.py", "agents/prompts.py"]:
+    # Also push agents/ files needed by voice/client.py and other imports
+    for agent_file in ["agents/__init__.py", "agents/_dev_stub.py", "agents/prompts.py", "agents/model_config.py"]:
         local_path = os.path.join(local_base, agent_file)
         if os.path.exists(local_path):
             ssh_exec(client, "mkdir -p /root/pantheon/agents")
@@ -182,6 +182,7 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/root/pantheon
+EnvironmentFile=/root/pantheon/.env
 Environment=PATH=/root/.local/bin:/usr/local/bin:/usr/bin:/bin
 ExecStart=/root/.local/bin/uv run python -c "import uvicorn; from gateway.webapp import app; uvicorn.run(app, host='127.0.0.1', port=8443)"
 Restart=always
