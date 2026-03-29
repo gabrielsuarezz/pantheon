@@ -54,10 +54,10 @@ async def _wait_for_ws(conversation: AsyncConversation) -> bool:
 
 async def ask_agent(text: str) -> str:
     """Send *text* to the ElevenLabs Conversational AI agent and return its reply."""
-    api_key = os.getenv("ELEVENLABS_API_KEY")
+    api_key = os.getenv("ELEVENLABS_API_KEY") or os.getenv("ELEVENLABS_API")
     agent_id = os.getenv("ELEVENLABS_AGENT_ID")
     if not api_key:
-        raise RuntimeError("ELEVENLABS_API_KEY is not set")
+        raise RuntimeError("ELEVENLABS_API_KEY (or ELEVENLABS_API) is not set")
     if not agent_id:
         raise RuntimeError("ELEVENLABS_AGENT_ID is not set")
 

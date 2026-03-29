@@ -229,38 +229,42 @@ function ParticleEdge({
   const [edgePath] = getBezierPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition });
   const isActive = data?.active as boolean;
   const color    = (data?.color as string) ?? 'rgba(201,162,39,0.4)';
-  const pathId   = `pp-${id}`;
 
   return (
     <g>
-      <defs>
-        <path id={pathId} d={edgePath} />
-      </defs>
+      {/* Base inactive edge path */}
+      {!isActive && (
+        <path
+          d={edgePath}
+          fill="none"
+          stroke="rgba(201,162,39,0.12)"
+          strokeWidth={1}
+          strokeDasharray="4 6"
+        />
+      )}
 
-      {/* Base / active edge path */}
-      <path
-        d={edgePath}
-        fill="none"
-        stroke={isActive ? color : 'rgba(201,162,39,0.12)'}
-        strokeWidth={isActive ? 2 : 1}
-        strokeDasharray={isActive ? undefined : '4 6'}
-        opacity={isActive ? 0.75 : 1}
-        style={{ transition: 'stroke 0.3s, opacity 0.3s' }}
-      />
-
-      {/* Particles — 4 dots staggered along the path */}
-      {isActive && [0, 0.2, 0.4, 0.6].map((beginOffset, i) => (
-        <circle key={i} r={3} fill={color} opacity={0.85}>
-          <animateMotion
-            dur="0.9s"
-            begin={`${beginOffset}s`}
+      {/* Active dashed striking line */}
+      {isActive && (
+        <path
+          d={edgePath}
+          fill="none"
+          stroke={color}
+          strokeWidth={3}
+          strokeDasharray="16 12"
+          strokeLinecap="round"
+          style={{
+            filter: `drop-shadow(0 0 6px ${color}80)`
+          }}
+        >
+          <animate
+            attributeName="stroke-dashoffset"
+            from="28"
+            to="0"
+            dur="0.5s"
             repeatCount="indefinite"
-            rotate="auto"
-          >
-            <mpath href={`#${pathId}`} />
-          </animateMotion>
-        </circle>
-      ))}
+          />
+        </path>
+      )}
     </g>
   );
 }

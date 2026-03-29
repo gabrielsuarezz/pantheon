@@ -3,8 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   LayoutDashboard,
-  Users,
-  Network,
   Terminal,
 } from 'lucide-react';
 import { getEventStore, type Statistics, type AgentStatus } from '@/lib/event-store';
@@ -17,12 +15,10 @@ import IOCPanel       from './IOCPanel';
 import HUDBar         from './HUDBar';
 import SlidePanel     from './SlidePanel';
 
-type Tab = 'dashboard' | 'agents' | 'network' | 'telemetry';
+type Tab = 'dashboard' | 'telemetry';
 
 const NAV: { tab: Tab; icon: React.ReactNode; label: string }[] = [
   { tab: 'dashboard', icon: <LayoutDashboard size={18} />, label: 'Dashboard'   },
-  { tab: 'agents',    icon: <Users size={18} />,           label: 'Agent Swarm' },
-  { tab: 'network',   icon: <Network size={18} />,         label: 'Network Map' },
   { tab: 'telemetry', icon: <Terminal size={18} />,        label: 'Telemetry'   },
 ];
 
@@ -106,11 +102,11 @@ export default function ProfessionalDashboard() {
           <div className="flex-1 min-h-0 relative">
             <OlympusFlow store={store} onSelect={handleSelectAgent} />
           </div>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-muted/30 uppercase tracking-[0.5em] font-bold text-xs">
-            {NAV.find(n => n.tab === activeTab)?.label} — coming soon
+        ) : activeTab === 'telemetry' ? (
+          <div className="flex-1 min-h-0 relative bg-white/20">
+            <DivineChronicle store={store} />
           </div>
-        )}
+        ) : null}
       </main>
 
       {/* Slide-in panels */}

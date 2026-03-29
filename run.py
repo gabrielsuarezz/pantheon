@@ -19,13 +19,25 @@ import sys
 from dotenv import load_dotenv
 
 
+def _env(*names: str) -> str:
+    """Return the first non-empty env var value from *names*."""
+    for name in names:
+        value = os.getenv(name)
+        if value:
+            return value
+    return ""
+
+
 def _check_env() -> None:
     """Warn about missing environment variables when strict mode is enabled."""
     if os.getenv("PANTHEON_STRICT_ENV") != "1":
         return
 
-    required = ["TELEGRAM_BOT_TOKEN", "ELEVENLABS_API_KEY"]
-    missing = [k for k in required if not os.getenv(k)]
+    required = {
+        "TELEGRAM_BOT_TOKEN|TELEGRAM_API": _env("TELEGRAM_BOT_TOKEN", "TELEGRAM_API"),
+        "ELEVENLABS_API_KEY|ELEVENLABS_API": _env("ELEVENLABS_API_KEY", "ELEVENLABS_API"),
+    }
+    missing = [k for k, v in required.items() if not v]
     if missing:
         print(f"Warning: missing environment variables: {', '.join(missing)}")
         print("Copy .env.example to .env and fill in values.")
@@ -80,18 +92,18 @@ async def _main() -> None:
     tasks: list[asyncio.Task[None]] = []
 
     # Hermes Telegram bot (requires TELEGRAM_BOT_TOKEN).
-    if os.getenv("TELEGRAM_BOT_TOKEN"):
+    if _env("TELEGRAM_BOT_TOKEN", "TELEGRAM_API"):
         tasks.append(asyncio.create_task(_run_bot()))
         logger.info("Hermes Telegram bot enabled")
     else:
-        logger.info("TELEGRAM_BOT_TOKEN not set — Telegram bot disabled")
+        logger.info("TELEGRAM_BOT_TOKEN/TELEGRAM_API not set — Telegram bot disabled")
 
     # Voice call Mini App (requires WEBAPP_BASE_URL and ELEVENLABS_API_KEY).
-    if os.getenv("WEBAPP_BASE_URL") and os.getenv("ELEVENLABS_API_KEY"):
+    if os.getenv("WEBAPP_BASE_URL") and _env("ELEVENLABS_API_KEY", "ELEVENLABS_API"):
         tasks.append(asyncio.create_task(_run_webapp()))
         logger.info("WebApp starting on port %s", os.getenv("WEBAPP_PORT", "8443"))
     else:
-        logger.info("WEBAPP_BASE_URL or ELEVENLABS_API_KEY not set — voice call Mini App disabled")
+        logger.info("WEBAPP_BASE_URL or ELEVENLABS_API_KEY/ELEVENLABS_API not set — voice call Mini App disabled")
 
     # Sandbox API (requires sandbox.main to exist).
     try:

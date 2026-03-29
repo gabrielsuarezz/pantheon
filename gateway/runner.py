@@ -21,6 +21,22 @@ _runner: Runner | None = None
 _use_elevenlabs_agent: bool | None = None
 
 
+def _looks_like_pantheon_activation(text: str) -> bool:
+    """Return True when user intent clearly asks to run Pantheon analysis."""
+    lowered = text.lower()
+    activation_markers = (
+        "start pantheon",
+        "run pantheon",
+        "activate pantheon",
+        "analyze malware",
+        "analyse malware",
+        "analyze sample",
+        "analyse sample",
+        "run analysis",
+    )
+    return any(marker in lowered for marker in activation_markers)
+
+
 def _has_elevenlabs_agent() -> bool:
     """Check whether we should route through ElevenLabs Conversational AI."""
     global _use_elevenlabs_agent
@@ -103,7 +119,12 @@ async def _run_via_elevenlabs(text: str) -> str:
     return await ask_agent(text)
 
 
-async def get_agent_response(user_id: str, text: str) -> str:
+async def get_zeus_response(user_id: str, text: str) -> str:
+    """Public helper for callers that must always use Zeus/ADK."""
+    return await _run_via_adk(user_id, text)
+
+
+async def get_agent_response(user_id: str, text: str, *, force_adk: bool = False) -> str:
     """Send *text* to the best available agent and return the full reply.
 
     Priority:
@@ -113,6 +134,14 @@ async def get_agent_response(user_id: str, text: str) -> str:
     If the primary fails, falls back to the other. The user always gets
     a response.
     """
+    if force_adk or _looks_like_pantheon_activation(text):
+        try:
+            response = await _run_via_adk(user_id, text)
+            if response:
+                return response
+        except Exception:
+            logger.exception("Forced ADK route failed for user %s", user_id)
+
     # --- Try ElevenLabs agent first (intelligent responses) ---
     if _has_elevenlabs_agent():
         try:

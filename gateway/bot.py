@@ -21,8 +21,10 @@ from telegram.ext import (
     filters,
 )
 
+from agents.tools.event_tools import emit_event
 from gateway.runner import get_agent_response
 from gateway.session import reset_session
+from sandbox.models import AgentName, EventType
 from voice.client import speak, transcribe
 
 logger = logging.getLogger(__name__)
@@ -125,6 +127,15 @@ async def _send_with_typing(
 
     _active_analyses.add(user_id)
     try:
+        # Fire-and-forget: Hermes should appear in the dashboard graph immediately.
+        asyncio.create_task(
+            emit_event(
+                EventType.AGENT_ACTIVATED.value,
+                agent=AgentName.HERMES.value,
+                payload=f"telegram_prompt:{prompt[:120]}",
+            )
+        )
+
         # Fire off the agent call and a delayed status update concurrently.
         response_task = asyncio.create_task(get_agent_response(user_id, prompt))
 
@@ -275,9 +286,9 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 def build_app() -> Application:  # type: ignore[type-arg]
     """Construct and return a configured Telegram Application (not yet running)."""
-    token = os.getenv("TELEGRAM_BOT_TOKEN")
+    token = os.getenv("TELEGRAM_BOT_TOKEN") or os.getenv("TELEGRAM_API")
     if not token:
-        raise RuntimeError("TELEGRAM_BOT_TOKEN environment variable is not set")
+        raise RuntimeError("TELEGRAM_BOT_TOKEN (or TELEGRAM_API) environment variable is not set")
 
     app: Application = Application.builder().token(token).build()  # type: ignore[type-arg]
 
