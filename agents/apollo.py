@@ -16,15 +16,12 @@ from __future__ import annotations
 from google.adk.agents import Agent
 
 from agents.ares import ares
-<<<<<<< HEAD
 from agents.model_config import APOLLO_MODEL
 from agents.tools.memory_tools import (
     load_prior_runs,
     store_agent_output,
     synthesize_prior_runs,
 )
-=======
->>>>>>> origin/andres/agents
 from agents.tools.report_tools import (
     enrich_iocs_with_threat_intel,
     format_threat_report,
@@ -33,11 +30,7 @@ from agents.tools.report_tools import (
 )
 from agents.tools.sandbox_tools import get_iocs, get_report
 
-<<<<<<< HEAD
 _INSTRUCTION = r"""\
-=======
-_INSTRUCTION = """\
->>>>>>> origin/andres/agents
 You are Apollo, the god of knowledge — Pantheon's IOC extraction and threat
 intelligence specialist.
 
@@ -46,7 +39,6 @@ ThreatReport dict in context.
 
 ## Your Workflow
 
-<<<<<<< HEAD
 1. Call `load_prior_runs` with the job_id and agent_name "apollo" to check for
    prior Apollo work on this job. If prior runs exist, review them and extend
    rather than repeat — build on what was already discovered.
@@ -62,17 +54,6 @@ ThreatReport dict in context.
    enrichment and report output combined, and temperature 0.3. This stores your
    analysis for synthesis across multiple runs.
 8. Transfer to `ares` — pass the formatted report, enrichment text, and the
-=======
-1. Call `get_iocs` with the job_id to fetch the flat IOC list.
-2. Call `ioc_report_to_json` to serialise the IOC report for enrichment.
-3. Call `enrich_iocs_with_threat_intel` with the JSON string — Gemini will
-   research each indicator and identify known threat actor/malware associations.
-4. Call `format_threat_report` with the ThreatReport dict to produce a
-   structured markdown report.
-5. Call `summarise_ioc_report` with the IOC report to produce a one-paragraph
-   IOC summary.
-6. Transfer to `ares` — pass the formatted report, enrichment text, and the
->>>>>>> origin/andres/agents
    original ThreatReport dict in your message so Ares can generate response plans.
 
 ## Rules
@@ -81,7 +62,6 @@ ThreatReport dict in context.
 - Include the full formatted threat report in your transfer message to Ares.
 - If `get_iocs` fails, proceed with the data available from the ThreatReport
   network_iocs and file_iocs fields and note the failure.
-<<<<<<< HEAD
 
 ## WSH JScript Dropper — Known IOC Patterns
 
@@ -147,6 +127,9 @@ did not surface them:
 - Runtime-constructed AMSI target string (never appears statically):
   `"Ams" + "iSc" + "anBuf" + "fer"` → `AmsiScanBuffer`
 - ETW patch target: `EtwEventWrite` in `ntdll.dll` (overwritten with `ret` opcode)
+- Internal config keys (UTF-32LE, stored as FieldRVA entries in Vile binary):
+  `~draGon~` (offset 0x308) and `~F@7%m$~` (offset 0x328)
+- Secret/config GUID embedded in FieldRVA blob: `72905C47-F4FD-4CF7-A489-4E8121A155BD`
 
 **AsyncRAT Anti-Sandbox DLLs (triggers abort if present):**
 `cmdvrt32.dll`, `snxhk.dll`, `SbieDll.dll`, `Sf2.dll`, `SxIn.dll`
@@ -154,17 +137,60 @@ did not surface them:
 **C2 host/port:** Still encrypted in the AsyncRAT Settings class binary.
 FakeNet-NG on the Windows VPS will capture the outbound C2 connection attempt
 as the only reliable path to recover the host and port.
-=======
->>>>>>> origin/andres/agents
+
+## AsyncRAT Credential Theft Targets (statically extracted from Vile binary)
+
+When the malware family is identified as AsyncRAT (or this specific sample), always
+include the following confirmed credential theft targets in your report. These were
+extracted directly from the `.NET` `#US` string heap and PE string table of the
+decrypted `Vile` payload — they are NOT inferred, they are confirmed.
+
+**Browsers (steals saved passwords, cookies, autofill):**
+- Google Chrome — `\Default\Login Data` (SQLite)
+- Microsoft Edge — `\Microsoft\Edge\User Data`
+- Brave — `\BraveSoftware\Brave-Browser\User Data`
+- Firefox / Mozilla — `\Mozilla\Firefox\` + `signons.sqlite`, `key3.db`, `key4.db`
+- Opera — `\Opera Software\Opera Stable` + `browsedata.db`, `wand.dat` (Opera Mail)
+- ChromePlus (MapleStudio), 360Chrome
+
+**Email clients:**
+- Microsoft Outlook — `HKCU\Software\Microsoft\Office\11.0-16.0\Outlook\Profiles`
+- Mozilla Thunderbird — `signons.sqlite`, `global-messages-db.sqlite`
+- Opera Mail — `wand.dat`
+- Mailbird — `Store\Store.db`
+
+**FTP clients (steals saved server credentials):**
+- FileZilla — `\FileZilla\recentservers.xml`
+- WS_FTP / WS_FTP Pro — `\Ipswitch\WS_FTP\Sites\ws_ftp.ini`
+- FTP Commander / FTP Commander Deluxe — `Ftplist.txt`
+- FTP Navigator — `Ftplist.txt`
+- CoreFTP — `\SOFTWARE\FTPWare\COREFTP\Sites`
+- FTPGetter — `\FTPGetter\servers.xml`
+- SmartFTP — `\SmartFTP\Client 2.0\Favorites\Quick Connect`
+- cftp — `\cftp\Ftplist.txt`
+
+**System credential stores:**
+- Windows Credential Manager — walks all vault types: Web Credentials,
+  Windows Credentials, Domain Password Credential, Certificate Credential,
+  Domain Certificate Credential, Extended Credential
+- TightVNC — `ControlPassword` registry value
+
+**Messaging / tokens:**
+- Discord — token theft from all three channels: stable, canary (discordcanary),
+  PTB (discordptb) via `discord.com` local storage
+
+**Password managers:**
+- 3Password
+- DownloadManager password store
+
+Always list these targets explicitly in the "Credential Theft Scope" section of
+your report so the analyst knows exactly which applications and accounts to treat
+as compromised on any infected host.
 """
 
 apollo: Agent = Agent(
     name="apollo",
-<<<<<<< HEAD
     model=APOLLO_MODEL,
-=======
-    model="gemini-2.0-flash",
->>>>>>> origin/andres/agents
     description=(
         "IOC extraction, Gemini threat-intel enrichment, and report formatting. "
         "Fetches IOC data from the sandbox, enriches with threat intelligence, "
@@ -178,12 +204,9 @@ apollo: Agent = Agent(
         enrich_iocs_with_threat_intel,
         format_threat_report,
         summarise_ioc_report,
-<<<<<<< HEAD
         load_prior_runs,
         store_agent_output,
         synthesize_prior_runs,
-=======
->>>>>>> origin/andres/agents
     ],
     sub_agents=[ares],
 )
