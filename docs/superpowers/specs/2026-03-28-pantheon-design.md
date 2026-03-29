@@ -100,6 +100,7 @@ pantheon/
   .gitignore
   pyproject.toml
   run.py
+  pantheon.db         # runtime — SQLite job store (gitignored, created on first run)
 ```
 
 ---
@@ -243,9 +244,27 @@ Artemis (background daemon, independent of above)
    - Build string lookup table
    - Replace all `_0x????()` calls with their resolved string values
    - Output: partially deobfuscated source
-5. Send 4000-token chunks of deobfuscated source to Gemini 2.0 Flash:
+5. Send 4000-token chunks of deobfuscated source to Gemini 2.5 Flash:
    - Prompt: "This is deobfuscated malware JavaScript. Identify the malware type, its behavior, what systems or data are at risk, and all IOCs (IPs, domains, file paths, registry keys). Be specific and technical. Format as JSON."
 6. Parse Gemini output into ThreatReport fields
+
+### Job Persistence
+
+Analysis results are stored in a SQLite database (`pantheon.db`) using WAL mode. This means:
+- Results survive a Hephaestus service restart — judges can see prior analysis
+- `INSERT OR REPLACE` makes re-submitting the same sample idempotent (same filename + content hash = same `job_id`)
+- `ThreatReport` and `IOCReport` are stored as Pydantic JSON (`model_dump_json`)
+- Tests use `:memory:` databases — no disk I/O or cleanup required
+
+Schema:
+```sql
+CREATE TABLE jobs (
+    job_id      TEXT PRIMARY KEY,
+    report_json TEXT NOT NULL,
+    ioc_json    TEXT,
+    created_at  TEXT DEFAULT (datetime('now'))
+)
+```
 
 ### Dynamic Analysis Pipeline (Docker)
 

@@ -12,6 +12,8 @@ from typing import Any
 from google import genai
 from google.genai import types as genai_types
 
+from agents.tools.event_tools import emit_event
+from sandbox.models import AgentName, EventType
 _MODEL: str = "gemini-2.5-flash"
 
 _CONTAINMENT_PROMPT = """\
@@ -19,7 +21,7 @@ You are an incident response engineer. A malware sample has been analysed.
 Based on the threat summary below, provide an IMMEDIATE containment plan.
 
 Requirements:
-- List concrete, actionable steps numbered 1–10 (use fewer if sufficient).
+- List concrete, actionable steps numbered 1-10 (use fewer if sufficient).
 - Focus on stopping the threat RIGHT NOW: network isolation, process kills,
   account lockouts, firewall rules, EDR quarantine actions.
 - Be specific: include exact commands or tool names where possible.
@@ -68,7 +70,7 @@ Respond in markdown with a numbered list.
 
 
 def _gemini_client() -> genai.Client:
-    """Return an authenticated Gemini client using GOOGLE_API_KEY."""
+    """Return an authenticated Gemini client using GEMINI_API."""
     api_key: str = os.environ["GEMINI_API"]
     return genai.Client(api_key=api_key)
 
@@ -103,7 +105,20 @@ async def generate_containment_plan(threat_summary: str) -> str:
     Returns:
         Markdown numbered list of containment steps.
     """
-    return await _generate(_CONTAINMENT_PROMPT.format(summary=threat_summary))
+    await emit_event(
+        EventType.TOOL_CALLED,
+        agent=AgentName.ARES,
+        tool="generate_containment_plan",
+        payload={"summary_length": len(threat_summary)},
+    )
+    result = await _generate(_CONTAINMENT_PROMPT.format(summary=threat_summary))
+    await emit_event(
+        EventType.TOOL_RESULT,
+        agent=AgentName.ARES,
+        tool="generate_containment_plan",
+        payload={"plan_length": len(result)},
+    )
+    return result
 
 
 async def generate_remediation_plan(threat_summary: str) -> str:
@@ -119,7 +134,20 @@ async def generate_remediation_plan(threat_summary: str) -> str:
     Returns:
         Markdown numbered list of remediation steps.
     """
-    return await _generate(_REMEDIATION_PROMPT.format(summary=threat_summary))
+    await emit_event(
+        EventType.TOOL_CALLED,
+        agent=AgentName.ARES,
+        tool="generate_remediation_plan",
+        payload={"summary_length": len(threat_summary)},
+    )
+    result = await _generate(_REMEDIATION_PROMPT.format(summary=threat_summary))
+    await emit_event(
+        EventType.TOOL_RESULT,
+        agent=AgentName.ARES,
+        tool="generate_remediation_plan",
+        payload={"plan_length": len(result)},
+    )
+    return result
 
 
 async def generate_prevention_plan(threat_summary: str) -> str:
@@ -136,7 +164,20 @@ async def generate_prevention_plan(threat_summary: str) -> str:
         Markdown numbered list of prevention recommendations including at least
         one concrete YARA or Sigma rule fragment.
     """
-    return await _generate(_PREVENTION_PROMPT.format(summary=threat_summary))
+    await emit_event(
+        EventType.TOOL_CALLED,
+        agent=AgentName.ARES,
+        tool="generate_prevention_plan",
+        payload={"summary_length": len(threat_summary)},
+    )
+    result = await _generate(_PREVENTION_PROMPT.format(summary=threat_summary))
+    await emit_event(
+        EventType.TOOL_RESULT,
+        agent=AgentName.ARES,
+        tool="generate_prevention_plan",
+        payload={"plan_length": len(result)},
+    )
+    return result
 
 
 def build_full_response(

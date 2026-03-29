@@ -1,0 +1,17 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+COPY pyproject.toml uv.lock ./
+RUN uv sync --no-dev --frozen
+
+COPY gateway/ ./gateway/
+COPY voice/ ./voice/
+COPY agents/ ./agents/
+COPY sandbox/models.py ./sandbox/models.py
+COPY sandbox/__init__.py ./sandbox/__init__.py
+
+EXPOSE 8000
+CMD ["uv", "run", "python", "-m", "gateway.bot"]

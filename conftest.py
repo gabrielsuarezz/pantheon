@@ -1,7 +1,7 @@
 """Root conftest — stubs unavailable third-party packages for the test suite.
 
 google-adk and google-genai are expensive runtime dependencies that are not
-required for unit-testing the tool functions.  We inject MagicMock stubs into
+required for unit-testing the tool functions. We inject MagicMock stubs into
 sys.modules here, at the earliest possible import point, before pytest starts
 collecting any test files or importing any agents/* modules.
 """
@@ -9,7 +9,6 @@ collecting any test files or importing any agents/* modules.
 from __future__ import annotations
 
 import sys
-from types import ModuleType
 from unittest.mock import MagicMock
 
 
