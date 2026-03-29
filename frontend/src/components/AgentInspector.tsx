@@ -39,7 +39,7 @@ export default function AgentInspector({ agent }: { agent: AgentStatus | null })
 
   if (!agent) {
     return (
-      <div className="h-full glass-panel rounded-2xl flex flex-col items-center justify-center p-8 text-center text-muted/40 gap-4">
+      <div className="flex flex-col items-center justify-center p-8 text-center text-muted/40 gap-4 h-64">
         <div className="w-16 h-16 rounded-full border border-dashed border-gold/30 flex items-center justify-center opacity-30">
           <LayoutGrid className="w-7 h-7" />
         </div>
@@ -68,27 +68,25 @@ export default function AgentInspector({ agent }: { agent: AgentStatus | null })
   };
 
   return (
-    <div className="h-full flex flex-col glass-panel rounded-2xl overflow-hidden border-gold/20 shadow-warm bg-white/40">
+    <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="px-6 py-8 border-b border-gold/10 bg-white/40 relative overflow-hidden">
-        
-        <div className="relative flex items-start justify-between">
+      <div className="px-6 py-6 border-b border-gold/10 bg-white/30">
+        <div className="flex items-start justify-between">
           <div className="flex gap-4">
             <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-warm border-2"
+              className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-warm border-2"
               style={{ backgroundColor: 'white', borderColor: meta.color }}
             >
-              <meta.icon size={28} color={meta.color} />
+              <meta.icon size={24} color={meta.color} />
             </div>
             <div className="pt-1">
-              <h2 className="text-xl font-serif font-bold text-ink italic leading-tight">{meta.label}</h2>
+              <h2 className="text-lg font-serif font-bold text-ink italic leading-tight">{meta.label}</h2>
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gold-dark/60 mt-0.5">{meta.role}</p>
             </div>
           </div>
-          
           <div className={`px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider border
-            ${agent.state === 'active' ? 'bg-amber-100/50 text-amber-600 border-amber-200' : 
-              agent.state === 'complete' ? 'bg-green-100/50 text-green-600 border-green-200' : 
+            ${agent.state === 'active'   ? 'bg-amber-100/50 text-amber-600 border-amber-200' :
+              agent.state === 'complete' ? 'bg-green-100/50 text-green-600 border-green-200' :
               'bg-slate-100/50 text-slate-500 border-slate-200'}
           `}>
             {agent.state}
@@ -97,57 +95,38 @@ export default function AgentInspector({ agent }: { agent: AgentStatus | null })
       </div>
 
       {/* Stats Grid */}
-      <div className="p-6 grid grid-cols-2 gap-3 shrink-0">
-        <StatItem icon={<Activity />} label="Event Count" value={agent.event_count} />
+      <div className="p-5 grid grid-cols-2 gap-3 shrink-0">
+        <StatItem icon={<Activity />} label="Events" value={agent.event_count} />
         <StatItem icon={<Clock />} label="State" value={agent.state} />
         <StatItem icon={<Shield />} label="Tools Called" value="—" />
         <StatItem icon={<Terminal />} label="Handoffs" value="—" />
       </div>
 
-      {/* Task Description */}
-      <div className="px-6 py-4 flex-1 overflow-y-auto">
-        <label className="text-[9px] font-bold uppercase tracking-widest text-muted/60 mb-2 block">Current Task</label>
-        <div className="p-4 rounded-xl bg-gold/5 border border-gold/10 italic text-[11px] text-ink/80 leading-relaxed shadow-inner">
-          {agent.current_task || 'Idle'}
+      {/* Task + Thought */}
+      <div className="px-5 py-3 flex-1 overflow-y-auto space-y-4">
+        <div>
+          <label className="text-[9px] font-bold uppercase tracking-widest text-muted/60 mb-2 block">Current Task</label>
+          <div className="p-3 rounded-xl bg-gold/5 border border-gold/10 italic text-[11px] text-ink/80 leading-relaxed">
+            {agent.current_task || 'Idle'}
+          </div>
         </div>
-
-        <label className="text-[9px] font-bold uppercase tracking-widest text-muted/60 mt-6 mb-2 block">Last Thought</label>
-        <p className="text-[10px] text-muted leading-relaxed pl-1">
-          {agent.last_thought || '—'}
-        </p>
+        <div>
+          <label className="text-[9px] font-bold uppercase tracking-widest text-muted/60 mb-2 block">Last Thought</label>
+          <p className="text-[10px] text-muted leading-relaxed">{agent.last_thought || '—'}</p>
+        </div>
       </div>
 
       {/* Controls */}
-      <div className="p-6 border-t border-gold/10 bg-white/50 space-y-3 shrink-0">
+      <div className="p-5 border-t border-gold/10 bg-white/30 space-y-3 shrink-0">
         <div className="flex gap-2">
           {isPaused ? (
-            <ControlButton 
-              icon={<Play fill="currentColor" />} 
-              label="Resume" 
-              onClick={() => sendCommand('resume')} 
-              className="flex-1 bg-gold text-white hover:bg-gold-dark"
-            />
+            <ControlButton icon={<Play fill="currentColor" />} label="Resume" onClick={() => sendCommand('resume')} className="flex-1 bg-gold text-white hover:bg-gold-dark" />
           ) : (
-            <ControlButton 
-              icon={<Pause fill="currentColor" />} 
-              label="Pause" 
-              onClick={() => sendCommand('pause')} 
-              className="flex-1 border-gold/40 text-gold hover:bg-gold/5"
-            />
+            <ControlButton icon={<Pause fill="currentColor" />} label="Pause" onClick={() => sendCommand('pause')} className="flex-1 border-gold/40 text-gold hover:bg-gold/5" />
           )}
-          <ControlButton 
-            icon={<Square fill="currentColor" />} 
-            label="Stop" 
-            onClick={() => sendCommand('stop')} 
-            className="flex-1 border-rose/30 text-rose-500 hover:bg-rose/5"
-          />
+          <ControlButton icon={<Square fill="currentColor" />} label="Stop" onClick={() => sendCommand('stop')} className="flex-1 border-rose/30 text-rose-500 hover:bg-rose/5" />
         </div>
-        <ControlButton 
-          icon={<RotateCcw />} 
-          label="Reset Agent Memory" 
-          onClick={() => sendCommand('reset')} 
-          className="w-full border-gold/40 text-gold hover:bg-gold/5"
-        />
+        <ControlButton icon={<RotateCcw />} label="Reset Agent Memory" onClick={() => sendCommand('reset')} className="w-full border-gold/40 text-gold hover:bg-gold/5" />
       </div>
     </div>
   );
