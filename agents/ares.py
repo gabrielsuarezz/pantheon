@@ -17,15 +17,12 @@ from __future__ import annotations
 
 from google.adk.agents import Agent
 
-<<<<<<< HEAD
 from agents.model_config import ARES_MODEL
 from agents.tools.memory_tools import (
     load_prior_runs,
     store_agent_output,
     synthesize_prior_runs,
 )
-=======
->>>>>>> origin/andres/agents
 from agents.tools.remediation_tools import (
     build_full_response,
     extract_threat_summary_for_ares,
@@ -34,11 +31,7 @@ from agents.tools.remediation_tools import (
     generate_remediation_plan,
 )
 
-<<<<<<< HEAD
 _INSTRUCTION = r"""\
-=======
-_INSTRUCTION = """\
->>>>>>> origin/andres/agents
 You are Ares, the god of war — Pantheon's containment and remediation specialist.
 
 You receive a fully analysed malware threat. Your job is to respond decisively
@@ -46,7 +39,6 @@ with three structured plans that a security team can act on immediately.
 
 ## Your Workflow
 
-<<<<<<< HEAD
 1. Call `load_prior_runs` with the job_id and agent_name "ares" to check for
    prior Ares plans on this job.
    - If 2 or more prior runs exist, call `synthesize_prior_runs` to get the
@@ -64,17 +56,6 @@ with three structured plans that a security team can act on immediately.
    assembled incident report, and temperature 0.3. This enables synthesis on
    future runs.
 8. Return the assembled markdown document as your final response.
-=======
-1. Call `extract_threat_summary_for_ares` with the threat_report dict and the
-   enrichment string that Apollo passed to you in context.
-2. Call `generate_containment_plan` with the summary — get immediate actions.
-3. Call `generate_remediation_plan` with the summary — get eradication steps.
-4. Call `generate_prevention_plan` with the summary — get long-term controls.
-5. Call `build_full_response` to assemble the complete incident report from all
-   previous agent outputs (threat_report_md, enrichment, containment, remediation,
-   prevention).
-6. Return the assembled markdown document as your final response.
->>>>>>> origin/andres/agents
 
 ## Rules
 
@@ -82,7 +63,6 @@ with three structured plans that a security team can act on immediately.
 - Be specific and technical — generic advice is not acceptable.
 - Reference actual IOCs (IPs, domains, file paths, registry keys) in your plans.
 - Use [CRITICAL], [HIGH], or [MEDIUM] urgency labels on containment steps.
-<<<<<<< HEAD
 
 ## WSH JScript Dropper — Specific Response Playbook
 
@@ -128,17 +108,11 @@ threat-specific steps in the appropriate plan sections:
 - If `windows-1251` charset was identified in the sample, consider blocking
   outbound connections to Cyrillic-TLD domains (`.ru`, `.su`, `.рф`) as a
   precautionary measure pending C2 identification
-=======
->>>>>>> origin/andres/agents
 """
 
 ares: Agent = Agent(
     name="ares",
-<<<<<<< HEAD
     model=ARES_MODEL,
-=======
-    model="gemini-2.0-flash",
->>>>>>> origin/andres/agents
     description=(
         "Containment, remediation, and prevention specialist. "
         "Generates three actionable response plans from a completed threat analysis."
@@ -150,11 +124,8 @@ ares: Agent = Agent(
         generate_remediation_plan,
         generate_prevention_plan,
         build_full_response,
-<<<<<<< HEAD
         load_prior_runs,
         store_agent_output,
         synthesize_prior_runs,
-=======
->>>>>>> origin/andres/agents
     ],
 )
