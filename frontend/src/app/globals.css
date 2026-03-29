@@ -1,23 +1,88 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-linen: #faf5ee;
-  --color-card: #fdf8f2;
-  --color-border-subtle: rgba(216, 208, 200, 0.6);
-  --color-sienna: #c2652a;
-  --color-rose: #8c3c3c;
-  --color-ink: #3b312a;
-  --color-muted: #6b5e55;
+  --color-linen: #FAFAF0;
+  --color-card: #FFFFFF;
+  --color-border-subtle: rgba(201, 162, 39, 0.25);
+  --color-sienna: #C9A227;
+  --color-gold: #C9A227;
+  --color-gold-light: #F0D060;
+  --color-gold-dark: #9A7A10;
+  --color-rose: #8B0000;
+  --color-ink: #1a1208;
+  --color-muted: #5a4e30;
+  --color-marble: #F7F4EE;
 
   --font-serif: var(--font-eb-garamond), ui-serif, Georgia, serif;
   --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  
-  --shadow-warm: 0 2px 16px rgba(58, 48, 42, 0.04);
+
+  --shadow-warm: 0 2px 24px rgba(201, 162, 39, 0.08);
+  --shadow-gold: 0 4px 32px rgba(201, 162, 39, 0.18);
 }
 
 body {
-  background: radial-gradient(circle at top left, #fff5ea 0%, var(--color-linen) 50%), var(--color-linen);
+  background:
+    radial-gradient(ellipse at 20% 10%, rgba(240, 208, 96, 0.07) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 90%, rgba(201, 162, 39, 0.05) 0%, transparent 60%),
+    linear-gradient(160deg, #FDFCF7 0%, #FAF8EE 40%, #F7F4E8 100%);
   color: var(--color-ink);
   min-height: 100vh;
+}
+
+/* Gold shimmer animation */
+@keyframes gold-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+/* Float animation for decorative elements */
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  33%  { transform: translateY(-8px) rotate(1deg); }
+  66%  { transform: translateY(-4px) rotate(-0.5deg); }
+}
+
+/* Twinkle for star field */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.15; transform: scale(1); }
+  50%  { opacity: 0.9; transform: scale(1.4); }
+}
+
+/* Column shimmer */
+@keyframes column-glow {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(201, 162, 39, 0.15)); }
+  50%  { filter: drop-shadow(0 0 18px rgba(201, 162, 39, 0.35)); }
+}
+
+.gold-text {
+  background: linear-gradient(135deg, #9A7A10 0%, #C9A227 35%, #F0D060 55%, #C9A227 75%, #9A7A10 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gold-shimmer 4s linear infinite;
+}
+
+.gold-border {
+  border-color: rgba(201, 162, 39, 0.4);
+}
+
+.marble-bg {
+  background:
+    repeating-linear-gradient(
+      105deg,
+      transparent 0px,
+      transparent 40px,
+      rgba(201, 162, 39, 0.015) 40px,
+      rgba(201, 162, 39, 0.015) 41px
+    ),
+    repeating-linear-gradient(
+      -15deg,
+      transparent 0px,
+      transparent 60px,
+      rgba(201, 162, 39, 0.01) 60px,
+      rgba(201, 162, 39, 0.01) 61px
+    ),
+    #FFFFFF;
 }

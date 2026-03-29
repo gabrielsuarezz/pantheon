@@ -50,11 +50,7 @@ Sample information:
 
 
 def _gemini_client() -> genai.Client:
-<<<<<<< HEAD
     """Return an authenticated Gemini client using GEMINI_API."""
-=======
-    """Return an authenticated Gemini client using GOOGLE_API_KEY."""
->>>>>>> origin/andres/agents
     api_key: str = os.environ["GEMINI_API"]
     return genai.Client(api_key=api_key)
 
@@ -79,11 +75,7 @@ async def classify_threat(
         Dict with keys:
         - ``threat_category`` (str): One of the known threat categories.
         - ``severity`` (str): "low", "medium", "high", or "critical".
-<<<<<<< HEAD
         - ``confidence`` (float): Classification confidence 0.0-1.0.
-=======
-        - ``confidence`` (float): Classification confidence 0.0–1.0.
->>>>>>> origin/andres/agents
         - ``reasoning`` (str): One-sentence explanation.
         - ``requires_sandbox`` (bool): Whether dynamic analysis is needed.
     """
