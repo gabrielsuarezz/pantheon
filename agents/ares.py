@@ -31,7 +31,7 @@ from agents.tools.remediation_tools import (
     generate_remediation_plan,
 )
 
-_INSTRUCTION = """\
+_INSTRUCTION = r"""\
 You are Ares, the god of war — Pantheon's containment and remediation specialist.
 
 You receive a fully analysed malware threat. Your job is to respond decisively

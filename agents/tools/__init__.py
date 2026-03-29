@@ -29,10 +29,12 @@ from agents.tools.sandbox_tools import (
     poll_report,
     submit_sample,
 )
+from agents.tools.event_tools import emit_event
 from agents.tools.triage_tools import classify_threat, create_incident_ticket
 
 __all__ = [
     "build_full_response",
+    "emit_event",
     "check_sandbox_health",
     "classify_threat",
     "create_incident_ticket",
