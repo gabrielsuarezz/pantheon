@@ -6,11 +6,14 @@ to the ElevenLabs Conversational AI agent for intelligent responses.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
+import re
 
 from google.adk.runners import Runner
 from google.genai import types
+from google.genai.errors import ClientError
 
 from gateway.session import APP_NAME, create_or_get_session, get_session_service
 
@@ -182,13 +185,31 @@ async def get_agent_response(user_id: str, text: str, *, force_adk: bool = False
     strict_adk = _requires_strict_adk_only(text, force_adk=force_adk)
 
     # --- Always try ADK pipeline first (Zeus → Athena → Hades → ...) ---
-    try:
-        response = await _run_via_adk(user_id, text)
-        if response:
-            return response
-        logger.warning("ADK pipeline returned empty for user %s", user_id)
-    except Exception:
-        logger.exception("ADK pipeline failed for user %s", user_id)
+    # Retry once on 429 RESOURCE_EXHAUSTED — parse the retry-after delay from
+    # the error and wait before attempting again.
+    for attempt in range(2):
+        try:
+            response = await _run_via_adk(user_id, text)
+            if response:
+                return response
+            logger.warning("ADK pipeline returned empty for user %s", user_id)
+            break
+        except ClientError as exc:
+            if exc.status_code == 429 and attempt == 0:
+                # Extract retry delay suggested by the API (default 40 s).
+                match = re.search(r"retry in (\d+)", str(exc), re.IGNORECASE)
+                wait = int(match.group(1)) + 2 if match else 40
+                logger.warning(
+                    "ADK pipeline hit Gemini quota (429) for user %s — retrying in %ds",
+                    user_id, wait,
+                )
+                await asyncio.sleep(wait)
+                continue
+            logger.exception("ADK pipeline failed for user %s", user_id)
+            break
+        except Exception:
+            logger.exception("ADK pipeline failed for user %s", user_id)
+            break
 
     if strict_adk:
         return _STRICT_ADK_FAILURE_MESSAGE
