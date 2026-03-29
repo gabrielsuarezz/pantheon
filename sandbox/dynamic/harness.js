@@ -1,106 +1,149 @@
-/**
- * Pantheon malware instrumentation harness.
- * Stubs dangerous APIs, intercepts all calls, outputs JSON log.
- * Run as: node harness.js <sample_path>
- *
- * SAFETY: This file is designed to run ONLY inside a hardened Docker container.
- * --network none --read-only --cap-drop ALL --security-opt no-new-privileges
- * Never run this on a host machine with the actual malware sample.
- */
+const fs = require('fs');
 
-'use strict';
-
-const path = require('path');
-const interceptLog = [];
-
-function ts() {
-  return new Date().toISOString();
-}
-
-function makeProxy(apiName) {
-  const handler = {
-    get(target, prop) {
-      if (prop === 'then') return undefined; // prevent Promise confusion
-      return new Proxy(function () {}, {
-        apply(_t, _this, args) {
-          interceptLog.push({
-            api: apiName,
-            method: String(prop),
-            args: args.map(a => {
-              try { return JSON.stringify(a); } catch (_) { return String(a); }
-            }),
-            timestamp: ts(),
-          });
-          return '';
-        },
-        get(_t2, prop2) {
-          return makeProxy(`${apiName}.${String(prop)}`).get(null, prop2);
-        },
-      });
-    },
-    construct(_t, args) {
-      interceptLog.push({ api: apiName, method: 'new', args: args.map(String), timestamp: ts() });
-      return makeProxy(`${apiName}#instance`);
-    },
-  };
-  return new Proxy({}, handler);
-}
-
-// --- Stub globals -----------------------------------------------------------
-
-global.WScript = makeProxy('WScript');
-global.WSH = makeProxy('WSH');
-global.ActiveXObject = function ActiveXObject(name) {
-  interceptLog.push({ api: 'ActiveXObject', method: 'constructor', args: [String(name)], timestamp: ts() });
-  return makeProxy(`ActiveX(${name})`);
-};
-global.GetObject = function GetObject(arg) {
-  interceptLog.push({ api: 'GetObject', method: 'call', args: [String(arg)], timestamp: ts() });
-  return makeProxy('GetObject#result');
-};
-
-// Intercept require for dangerous modules
-const _origRequire = require;
-function safeRequire(id) {
-  const blocked = ['child_process', 'net', 'http', 'https', 'dgram', 'tls', 'cluster'];
-  if (blocked.includes(id)) {
-    interceptLog.push({ api: 'require', method: id, args: [], timestamp: ts() });
-    return makeProxy(`module:${id}`);
-  }
-  if (id === 'fs') {
-    const realFs = _origRequire('fs');
-    const fsProxy = Object.assign({}, realFs);
-    ['writeFile', 'writeFileSync', 'appendFile', 'appendFileSync', 'unlink', 'unlinkSync'].forEach(fn => {
-      fsProxy[fn] = function (...args) {
-        interceptLog.push({ api: 'fs', method: fn, args: args.map(a => String(a).slice(0, 200)), timestamp: ts() });
-      };
+const log = [];
+function recordAction(api, method, args) {
+    // some args could be huge buffers or massive strings (like our payload). 
+    // We should truncate massive strings for the JSON log, but maybe write them to disk?
+    // Let's truncate strings larger than 1MB to avoid OOM, or maybe 50KB.
+    const cleanArgs = args.map(arg => {
+        if (typeof arg === 'string' && arg.length > 50000) {
+            const sum = require('crypto').createHash('sha256').update(arg).digest('hex');
+            fs.writeFileSync(`/tmp/payload_${sum}.bin`, arg);
+            return `[LARGE STRING TRIMMED - Saved to /tmp/payload_${sum}.bin] (Len: ${arg.length})`;
+        }
+        return arg;
     });
-    return fsProxy;
-  }
-  return _origRequire(id);
-}
-// Override require in global scope for eval'd code
-global.require = safeRequire;
-
-// Collapse time-based evasion
-global.setTimeout = function (fn) { try { if (typeof fn === 'function') fn(); } catch (_) {} };
-global.setInterval = function (fn) { try { if (typeof fn === 'function') fn(); } catch (_) {} };
-global.clearTimeout = function () {};
-global.clearInterval = function () {};
-
-// --- Load sample ------------------------------------------------------------
-
-const samplePath = process.argv[2];
-if (!samplePath) {
-  process.stderr.write('Usage: node harness.js <sample_path>\n');
-  process.exit(1);
+    
+    log.push({
+        timestamp: Date.now(),
+        api,
+        method,
+        args: cleanArgs
+    });
 }
 
+function createStubProxy(apiName) {
+    const state = {};
+    return new Proxy(function() {}, {
+        get: function(target, prop) {
+            if (prop in state) return state[prop];
+            if (prop === 'toString' || prop === 'valueOf' || prop === Symbol.toPrimitive) return () => `[${apiName}]`;
+            if (typeof prop === 'symbol') return undefined;
+            if (prop === 'toString' || prop === 'valueOf' || prop === Symbol.toPrimitive) return () => `[${apiName}]`;
+            if (typeof prop === 'symbol') return undefined;
+            
+            // Return another proxy for chained calls or properties
+            return new Proxy(function() {}, {
+                apply: function(tgt, thisArg, args) {
+                    recordAction(apiName, prop, args);
+                    return createStubProxy(`${apiName}.${String(prop)}()`);
+                },
+                get: function(tgt, subProp) {
+                    return createStubProxy(`${apiName}.${String(prop)}.${String(subProp)}`);
+                }
+            });
+        },
+        apply: function(target, thisArg, args) {
+            recordAction(apiName, 'constructor_or_call', args);
+            // Specifically handle classic COM objects
+            if (args[0] === 'WScript.Shell') return createWScriptShellStub();
+            if (args[0] === 'ADODB.Stream') return createAdodbStreamStub();
+            if (args[0] === 'Scripting.FileSystemObject') return createFsoStub();
+            return createStubProxy(`${apiName}(...)`);
+        },
+        set: function(target, prop, value) {
+            recordAction(apiName, `set_${String(prop)}`, [value]);
+            state[prop] = value;
+            return true;
+        }
+    });
+}
+
+function createWScriptShellStub() {
+    return {
+        Run: function(cmd, windowStyle, bWaitOnReturn) {
+            recordAction('WScript.Shell', 'Run', [cmd, windowStyle, bWaitOnReturn]);
+            return 0; // Return success code
+        },
+        RegWrite: function(key, value, type) {
+            recordAction('WScript.Shell', 'RegWrite', [key, value, type]);
+        },
+        ExpandEnvironmentStrings: function(str) {
+            recordAction('WScript.Shell', 'ExpandEnvironmentStrings', [str]);
+            return str.replace('%TEMP%', 'C:\\Temp').replace('%PUBLIC%', 'C:\\Users\\Public');
+        },
+        CreateShortcut: function(path) {
+            recordAction('WScript.Shell', 'CreateShortcut', [path]);
+            return {
+                TargetPath: '',
+                Save: function() { recordAction('WScript.Shortcut', 'Save', [path]); }
+            };
+        }
+    };
+}
+
+function createAdodbStreamStub() {
+    let mode, type, charset, pos;
+    let content = "";
+    return {
+        Open: function() { recordAction('ADODB.Stream', 'Open', []); },
+        WriteText: function(text) { 
+            recordAction('ADODB.Stream', 'WriteText', [text]); 
+            content += text;
+        },
+        SaveToFile: function(path, saveOptions) {
+            recordAction('ADODB.Stream', 'SaveToFile', [path, saveOptions]);
+        },
+        Close: function() { recordAction('ADODB.Stream', 'Close', []); },
+        set Type(v) { type = v; recordAction('ADODB.Stream', 'set Type', [v]); },
+        set Charset(v) { charset = v; recordAction('ADODB.Stream', 'set Charset', [v]); },
+        set Position(v) { pos = v; recordAction('ADODB.Stream', 'set Position', [v]); }
+    };
+}
+
+function createFsoStub() {
+    return {
+        FileExists: function(path) {
+            recordAction('Scripting.FileSystemObject', 'FileExists', [path]);
+            return true; // pretend it exists so it deletes it, or pretend it doesn't
+        },
+        DeleteFile: function(path) {
+            recordAction('Scripting.FileSystemObject', 'DeleteFile', [path]);
+        }
+    };
+}
+
+// Globals injection
+global.ActiveXObject = createStubProxy('ActiveXObject');
+global.WScript = createStubProxy('WScript');
+global.WScript.ScriptName = "6108674530.JS";
+global.WScript.ScriptFullName = "C:\\Users\\Public\\6108674530.JS";
+global.WScript.Path = "C:\\Users\\Public";
+global.WSH = global.WScript;
+
+// SetTimeout collapse
+global.setTimeout = function(cb, ms) {
+    recordAction('Global', 'setTimeout', [ms]);
+    cb();
+};
+global.setInterval = function(cb, ms) {
+    recordAction('Global', 'setInterval', [ms]);
+    cb();
+};
+
+// Run the script
+const path = process.argv[2];
 try {
-  const abs = path.resolve(samplePath);
-  _origRequire(abs);
+    const code = fs.readFileSync(path, 'utf8');
+    recordAction('Harness', 'Start', [path]);
+    
+    // Evaluate the malware in the current context
+    eval(code);
+    
+    // Capture unhandled things that might be added to 'this' or 'global'
+    recordAction('Harness', 'End', []);
 } catch (e) {
-  interceptLog.push({ api: 'runtime', method: 'error', args: [String(e.message)], timestamp: ts() });
+    recordAction('Harness', 'Error', [e.message]);
 }
 
-process.stdout.write(JSON.stringify(interceptLog));
+console.log(JSON.stringify(log, null, 2));
