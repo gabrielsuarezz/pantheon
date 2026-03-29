@@ -98,8 +98,17 @@ set -a
 source .env
 set +a
 
-if [[ -z "${GOOGLE_API_KEY:-}" && -z "${GEMINI_API:-}" ]]; then
-  die "Missing AI API key in .env. Set GOOGLE_API_KEY (preferred) or GEMINI_API"
+# AI Studio (API keys) OR Vertex AI (ADC + project — see .env.example)
+_vertex="${GOOGLE_GENAI_USE_VERTEXAI:-}"
+_vertex_lc=$(printf '%s' "${_vertex}" | tr '[:upper:]' '[:lower:]')
+_vertex_on=0
+case "${_vertex_lc}" in 1|true|yes|on) _vertex_on=1 ;; esac
+if [[ "$_vertex_on" -eq 1 ]]; then
+  if [[ -z "${GOOGLE_CLOUD_PROJECT:-}" && -z "${GCP_PROJECT_ID:-}" ]]; then
+    die "Vertex AI enabled (GOOGLE_GENAI_USE_VERTEXAI) but GOOGLE_CLOUD_PROJECT or GCP_PROJECT_ID is unset"
+  fi
+elif [[ -z "${GOOGLE_API_KEY:-}" && -z "${GEMINI_API:-}" ]]; then
+  die "Missing AI credentials: set GOOGLE_API_KEY or GEMINI_API (AI Studio), or enable Vertex with GOOGLE_GENAI_USE_VERTEXAI and GOOGLE_CLOUD_PROJECT"
 fi
 
 if [[ -z "${TELEGRAM_BOT_TOKEN:-}" ]]; then

@@ -9,19 +9,13 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from google import genai
 from google.genai import types as genai_types
 
-from agents.model_config import get_next_gemini_api_key
+from agents.model_config import FLASH_MODEL, get_genai_client
 from agents.tools.event_tools import emit_event
 from sandbox.models import AgentName, EventType
-_MODEL: str = "gemini-2.5-flash"
 
-
-def _gemini_client() -> genai.Client:
-    """Return an authenticated Gemini client using round-robin key rotation."""
-    api_key = get_next_gemini_api_key()
-    return genai.Client(api_key=api_key)
+_MODEL: str = FLASH_MODEL
 
 
 async def enrich_iocs_with_threat_intel(ioc_report_json: str) -> str:
@@ -44,7 +38,7 @@ async def enrich_iocs_with_threat_intel(ioc_report_json: str) -> str:
         tool="enrich_iocs_with_threat_intel",
         payload={"ioc_report_length": len(ioc_report_json)},
     )
-    client = _gemini_client()
+    client = get_genai_client()
     prompt = (
         "You are a threat intelligence analyst. Below is a set of indicators of "
         "compromise (IOCs) extracted from a malware sample.\n\n"
@@ -86,7 +80,10 @@ def format_threat_report(report_json: str) -> str:
         Markdown string summarising the threat analysis.
     """
     import json as _json
-    report: dict = _json.loads(report_json) if isinstance(report_json, str) else report_json
+    if isinstance(report_json, str):
+        report: dict[str, Any] = _json.loads(report_json)
+    else:
+        report = report_json
     status = report.get("status", "unknown")
     if status == "failed":
         return f"**Analysis failed** for job `{report.get('job_id', 'N/A')}`."
@@ -179,7 +176,10 @@ def summarise_ioc_report(ioc_report_json: str) -> str:
         Single paragraph summarising the IOC counts and highlights.
     """
     import json as _json
-    ioc_report: dict = _json.loads(ioc_report_json) if isinstance(ioc_report_json, str) else ioc_report_json
+    if isinstance(ioc_report_json, str):
+        ioc_report: dict[str, Any] = _json.loads(ioc_report_json)
+    else:
+        ioc_report = ioc_report_json
     ips: list[str] = ioc_report.get("ips", [])
     domains: list[str] = ioc_report.get("domains", [])
     urls: list[str] = ioc_report.get("urls", [])
@@ -213,16 +213,19 @@ def summarise_ioc_report(ioc_report_json: str) -> str:
     return "IOC summary: " + "; ".join(parts) + "."
 
 
-def ioc_report_to_json(ioc_report_json: str) -> str:
-    """Normalise an IOCReport JSON string to compact form.
+def ioc_report_to_json(ioc_report_json: str | dict[str, Any]) -> str:
+    """Normalise an IOCReport JSON string or dict to compact form.
 
     Used to pass IOC data to :func:`enrich_iocs_with_threat_intel`.
 
     Args:
-        ioc_report_json: JSON-encoded IOCReport dict (from get_iocs).
+        ioc_report_json: JSON-encoded IOCReport string (from get_iocs) or a dict.
 
     Returns:
         Compact JSON string.
     """
-    parsed = json.loads(ioc_report_json)
+    if isinstance(ioc_report_json, str):
+        parsed: dict[str, Any] = json.loads(ioc_report_json)
+    else:
+        parsed = ioc_report_json
     return json.dumps(parsed, separators=(",", ":"))

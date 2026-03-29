@@ -9,10 +9,10 @@ from typing import Any, cast
 from google import genai
 from google.genai import types
 
-from agents.model_config import get_next_gemini_api_key
+from agents.model_config import GEMINI_ANALYST_MODEL, get_genai_client
 from sandbox.models import FileIOCs, NetworkIOCs, RiskLevel, ThreatReport
 
-_MODEL = "gemini-2.5-flash"
+_MODEL = GEMINI_ANALYST_MODEL
 
 logger = logging.getLogger(__name__)
 
@@ -44,8 +44,10 @@ Extracted content:
 
 class GeminiAnalyst:
     def __init__(self, api_key: str | None = None) -> None:
-        self._api_key = api_key or get_next_gemini_api_key()
-        self._client = genai.Client(api_key=self._api_key)
+        if api_key is not None:
+            self._client = genai.Client(api_key=api_key)
+        else:
+            self._client = get_genai_client()
 
     async def analyze(self, summary_text: str) -> ThreatReport:
         """Send extracted strings to Gemini and parse the response into a ThreatReport."""

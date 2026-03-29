@@ -8,14 +8,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from google import genai
 from google.genai import types as genai_types
 
-from agents.model_config import get_next_gemini_api_key
+from agents.model_config import FLASH_MODEL, get_genai_client
 from agents.tools.event_tools import emit_event
 from sandbox.models import AgentName, EventType
 
-_MODEL: str = "gemini-2.5-flash"
+_MODEL: str = FLASH_MODEL
 
 _CONTAINMENT_PROMPT = """\
 You are an incident response engineer. A malware sample has been analysed.
@@ -70,12 +69,6 @@ Respond in markdown with a numbered list.
 """
 
 
-def _gemini_client() -> genai.Client:
-    """Return an authenticated Gemini client using round-robin key rotation."""
-    api_key = get_next_gemini_api_key()
-    return genai.Client(api_key=api_key)
-
-
 def _workflow_payload(
     *,
     workflow: str | None,
@@ -91,7 +84,7 @@ def _workflow_payload(
 
 async def _generate(prompt: str) -> str:
     """Send *prompt* to Gemini and return the text response."""
-    client = _gemini_client()
+    client = get_genai_client()
     response = await client.aio.models.generate_content(
         model=_MODEL,
         contents=prompt,
@@ -307,7 +300,10 @@ def extract_threat_summary_for_ares(
         Compact threat summary string.
     """
     import json as _json
-    threat_report: dict = _json.loads(threat_report_json) if isinstance(threat_report_json, str) else threat_report_json
+    if isinstance(threat_report_json, str):
+        threat_report: dict[str, Any] = _json.loads(threat_report_json)
+    else:
+        threat_report = threat_report_json
     malware_type: str = threat_report.get("malware_type", "Unknown malware")
     risk: str = threat_report.get("risk_level", "unknown")
     behaviors: list[str] = threat_report.get("behavior", [])

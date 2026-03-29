@@ -35,9 +35,11 @@ Cost guardrails
 
 from __future__ import annotations
 
-from itertools import cycle
 import os
+from itertools import cycle
 from threading import Lock
+
+from google import genai
 
 # ---------------------------------------------------------------------------
 # Model names — overridable via environment for quick switching
@@ -99,6 +101,51 @@ MEDIUM_MODEL = FLASH_MODEL
 # LITE_MODEL already defined above
 
 # ---------------------------------------------------------------------------
+# Vertex AI (GCP) vs Gemini Developer API (AI Studio API keys)
+# ---------------------------------------------------------------------------
+
+
+def _env_truthy(name: str) -> bool:
+    v = os.getenv(name, "").strip().lower()
+    return v in ("1", "true", "yes", "on")
+
+
+def resolve_gcp_project_id() -> str:
+    """Return GCP project ID for Vertex AI (GOOGLE_CLOUD_PROJECT or GCP_PROJECT_ID)."""
+    for key in ("GOOGLE_CLOUD_PROJECT", "GCP_PROJECT_ID"):
+        value = os.getenv(key, "").strip()
+        if value:
+            return value
+    return ""
+
+
+def resolve_vertex_location() -> str:
+    """Vertex region; defaults to us-central1 if unset."""
+    return os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1").strip() or "us-central1"
+
+
+# True when using billable Vertex AI with ADC (or GOOGLE_APPLICATION_CREDENTIALS)
+USE_VERTEX_AI: bool = _env_truthy("GOOGLE_GENAI_USE_VERTEXAI")
+
+
+def get_genai_client() -> genai.Client:
+    """Return a google-genai client: Vertex (ADC) or AI Studio (rotating API keys)."""
+    if USE_VERTEX_AI:
+        project = resolve_gcp_project_id()
+        if not project:
+            raise RuntimeError(
+                "Vertex AI is enabled (GOOGLE_GENAI_USE_VERTEXAI) but no project ID is set. "
+                "Set GOOGLE_CLOUD_PROJECT or GCP_PROJECT_ID, and GOOGLE_CLOUD_LOCATION "
+                "(optional, default us-central1). Use Application Default Credentials "
+                "(gcloud auth application-default login) or GOOGLE_APPLICATION_CREDENTIALS."
+            )
+        location = resolve_vertex_location()
+        return genai.Client(vertexai=True, project=project, location=location)
+    api_key = get_next_gemini_api_key()
+    return genai.Client(api_key=api_key)
+
+
+# ---------------------------------------------------------------------------
 # API key rotation — distributes load across team keys to avoid 429s
 # ---------------------------------------------------------------------------
 
@@ -137,7 +184,9 @@ def get_next_gemini_api_key() -> str:
     """
     if _GEMINI_KEY_CYCLE is None:
         raise RuntimeError(
-            "No Gemini API key configured. Set GEMINI_API1..3, GEMINI_API, or GOOGLE_API_KEY."
+            "No Gemini API key configured. For AI Studio, set GEMINI_API1..3, GEMINI_API, "
+            "or GOOGLE_API_KEY. For Vertex AI, set GOOGLE_GENAI_USE_VERTEXAI=TRUE and "
+            "GOOGLE_CLOUD_PROJECT (or GCP_PROJECT_ID) and use ADC."
         )
 
     with _GEMINI_KEY_LOCK:

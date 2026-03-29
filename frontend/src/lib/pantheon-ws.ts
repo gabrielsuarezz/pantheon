@@ -52,7 +52,16 @@ export class PantheonWebSocket {
   }
 
   connect(): Promise<void> {
-    const candidates = [this.url, this.fallbackUrl].filter((u): u is string => Boolean(u));
+    const candidates = [this.url];
+    
+    // If we're using localhost, also try 127.0.0.1 as a candidate to bypass IPv6/IPv4 resolution issues
+    if (this.url.includes("localhost")) {
+      candidates.push(this.url.replace("localhost", "127.0.0.1"));
+    }
+    
+    if (this.fallbackUrl && !candidates.includes(this.fallbackUrl)) {
+      candidates.push(this.fallbackUrl);
+    }
 
     return new Promise((resolve, reject) => {
       const tryConnect = (index: number) => {
@@ -122,9 +131,17 @@ export class PantheonWebSocket {
 
         this.ws.onerror = (error) => {
           clearTimeout(connectionTimeout);
-          const errorMsg = `WebSocket connection failed to ${targetUrl}. ` +
-            `Ensure Hephaestus is running and NEXT_PUBLIC_SANDBOX_URL is correct. ` +
-            `Error: ${error instanceof Event ? error.type : String(error)}`;
+          
+          // WebSocket error events are notoriously opaque in the browser ("Error: error")
+          // We provide as much context as possible based on common failure modes.
+          let detail = "Check if Hephaestus is running and the port is open.";
+          if (targetUrl.includes(":9000")) {
+            detail = "Hephaestus (port 9000) might be blocked or not running in Docker.";
+          }
+          
+          const errorMsg = `WebSocket connection failed to ${targetUrl}. ${detail} ` +
+            `(Error: ${error instanceof Event ? error.type : String(error)})`;
+            
           console.error("[Pantheon WS]", errorMsg);
           reject(new Error(errorMsg));
         };

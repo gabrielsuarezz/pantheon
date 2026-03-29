@@ -143,7 +143,7 @@ def _make_httpx_mock(
 
 
 def _make_gemini_mock(text: str) -> MagicMock:
-    """Return a ``_gemini_client()`` mock whose ``aio.models.generate_content``
+    """Return a ``get_genai_client()`` mock whose ``aio.models.generate_content``
     resolves to a response with ``.text == text``."""
     mock_response = MagicMock()
     mock_response.text = text
@@ -434,7 +434,7 @@ class TestEnrichIocsWithThreatIntel:
         enrichment_text = "## IOC Enrichment\n- 198.51.100.42: known Cobalt Strike C2"
         mock_gemini = _make_gemini_mock(enrichment_text)
 
-        with patch("agents.tools.report_tools._gemini_client", return_value=mock_gemini):
+        with patch("agents.tools.report_tools.get_genai_client", return_value=mock_gemini):
             result = await enrich_iocs_with_threat_intel(
                 ioc_report_to_json(MOCK_IOC_REPORT.model_dump())
             )
@@ -447,7 +447,7 @@ class TestEnrichIocsWithThreatIntel:
         mock_client = MagicMock()
         mock_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
 
-        with patch("agents.tools.report_tools._gemini_client", return_value=mock_client):
+        with patch("agents.tools.report_tools.get_genai_client", return_value=mock_client):
             result = await enrich_iocs_with_threat_intel("{}")
 
         assert result == "(no enrichment generated)"
@@ -470,7 +470,7 @@ class TestEnrichIocsWithThreatIntel:
         mock_client.aio.models.generate_content = capture_generate
 
         ioc_json = ioc_report_to_json(MOCK_IOC_REPORT.model_dump())
-        with patch("agents.tools.report_tools._gemini_client", return_value=mock_client):
+        with patch("agents.tools.report_tools.get_genai_client", return_value=mock_client):
             await enrich_iocs_with_threat_intel(ioc_json)
 
         assert ioc_json in captured_prompt[0]
@@ -541,7 +541,7 @@ class TestGenerateContainmentPlan:
         plan = "1. [CRITICAL] Block 198.51.100.42 at the firewall"
         mock_gemini = _make_gemini_mock(plan)
 
-        with patch("agents.tools.remediation_tools._gemini_client", return_value=mock_gemini):
+        with patch("agents.tools.remediation_tools.get_genai_client", return_value=mock_gemini):
             result = await generate_containment_plan("threat summary here")
 
         assert result == plan
@@ -552,7 +552,7 @@ class TestGenerateContainmentPlan:
         mock_client = MagicMock()
         mock_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
 
-        with patch("agents.tools.remediation_tools._gemini_client", return_value=mock_client):
+        with patch("agents.tools.remediation_tools.get_genai_client", return_value=mock_client):
             result = await generate_containment_plan("summary")
 
         assert result == "(no plan generated)"
@@ -563,7 +563,7 @@ class TestGenerateRemediationPlan:
         plan = "1. Remove C:\\Temp\\svchost32.exe\n2. Delete registry key"
         mock_gemini = _make_gemini_mock(plan)
 
-        with patch("agents.tools.remediation_tools._gemini_client", return_value=mock_gemini):
+        with patch("agents.tools.remediation_tools.get_genai_client", return_value=mock_gemini):
             result = await generate_remediation_plan("threat summary here")
 
         assert result == plan
@@ -574,7 +574,7 @@ class TestGeneratePreventionPlan:
         plan = "1. Enable ASR rules\n2. Deploy YARA rule for _0x obfuscation"
         mock_gemini = _make_gemini_mock(plan)
 
-        with patch("agents.tools.remediation_tools._gemini_client", return_value=mock_gemini):
+        with patch("agents.tools.remediation_tools.get_genai_client", return_value=mock_gemini):
             result = await generate_prevention_plan("threat summary here")
 
         assert result == plan
@@ -657,7 +657,7 @@ class TestPipelineIntegration:
         # Stage 2c — Apollo: enrich with threat intel (mocked Gemini)
         enrichment = "Cobalt Strike C2 at 198.51.100.42 — high confidence"
         mock_gemini = _make_gemini_mock(enrichment)
-        with patch("agents.tools.report_tools._gemini_client", return_value=mock_gemini):
+        with patch("agents.tools.report_tools.get_genai_client", return_value=mock_gemini):
             enrichment_result = await enrich_iocs_with_threat_intel(ioc_json)
 
         assert enrichment_result == enrichment
@@ -674,19 +674,19 @@ class TestPipelineIntegration:
         prevention_text = "1. Deploy YARA rule for _0x obfuscation pattern"
 
         with patch(
-            "agents.tools.remediation_tools._gemini_client",
+            "agents.tools.remediation_tools.get_genai_client",
             return_value=_make_gemini_mock(containment_text),
         ):
             containment = await generate_containment_plan(ares_summary)
 
         with patch(
-            "agents.tools.remediation_tools._gemini_client",
+            "agents.tools.remediation_tools.get_genai_client",
             return_value=_make_gemini_mock(remediation_text),
         ):
             remediation = await generate_remediation_plan(ares_summary)
 
         with patch(
-            "agents.tools.remediation_tools._gemini_client",
+            "agents.tools.remediation_tools.get_genai_client",
             return_value=_make_gemini_mock(prevention_text),
         ):
             prevention = await generate_prevention_plan(ares_summary)

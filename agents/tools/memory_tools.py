@@ -14,15 +14,14 @@ import os
 from typing import Any
 
 import httpx
-from google import genai
 from google.genai import types as genai_types
 
-from agents.model_config import get_next_gemini_api_key
+from agents.model_config import FLASH_MODEL, get_genai_client
 from agents.tools.event_tools import emit_event
 from sandbox.models import AgentName, EventType
 
 _SANDBOX_URL: str = os.getenv("SANDBOX_API_URL", "http://localhost:9000")
-_MODEL: str = "gemini-2.5-flash"
+_MODEL: str = FLASH_MODEL
 
 _SYNTHESIS_PROMPT = """\
 You are synthesizing {n} analysis runs produced by the "{agent_name}" agent for \
@@ -44,12 +43,6 @@ Format your output in the same style as the individual runs.
 
 {runs_block}
 """
-
-
-def _gemini_client() -> genai.Client:
-    """Return an authenticated Gemini client using round-robin key rotation."""
-    api_key = get_next_gemini_api_key()
-    return genai.Client(api_key=api_key)
 
 
 async def store_agent_output(
@@ -191,7 +184,7 @@ async def synthesize_prior_runs(
         runs_block=runs_block,
     )
 
-    client = _gemini_client()
+    client = get_genai_client()
     response = await client.aio.models.generate_content(
         model=_MODEL,
         contents=prompt,

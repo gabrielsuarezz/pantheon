@@ -1,18 +1,16 @@
 from __future__ import annotations
 
 import os
-from typing import Final, Any
+from typing import Final
 
 import httpx
-from google import genai
 from google.genai import types
 
-from agents.model_config import get_next_gemini_api_key
+from agents.model_config import MUSE_STT_MODEL, get_genai_client
 from agents.tools.event_tools import emit_event
 from sandbox.models import AgentName, EventType
 from voice.exceptions import SpeechError, TranscriptionError
 from voice.personas import ZEUS_VOICE_ID
-from agents.model_config import MUSE_STT_MODEL
 
 _ELEVENLABS_BASE_URL: Final[str] = "https://api.elevenlabs.io/v1"
 _STT_MODEL: Final[str] = "scribe_v2"
@@ -62,7 +60,11 @@ async def transcribe(audio_bytes: bytes, mime_type: str = "audio/ogg") -> str:
                 EventType.TOOL_RESULT,
                 agent=AgentName.MUSE,
                 tool="transcribe",
-                payload={"text_preview": response_text[:50], "chars": len(response_text), "method": "gemini_fallback"},
+                payload={
+                    "text_preview": response_text[:50],
+                    "chars": len(response_text),
+                    "method": "gemini_fallback",
+                },
             )
             return response_text
         except Exception as gemini_exc:  # pragma: no cover
@@ -147,9 +149,7 @@ async def _transcribe_elevenlabs(audio_bytes: bytes, mime_type: str) -> str:
 
 async def _transcribe_gemini(audio_bytes: bytes, mime_type: str) -> str:
     """Internal Gemini STT fallback implementation using recommended model."""
-    api_key = get_next_gemini_api_key()
-
-    client = genai.Client(api_key=api_key)
+    client = get_genai_client()
     response = await client.aio.models.generate_content(
         model=_GEMINI_AUDIO_MODEL,
         contents=[

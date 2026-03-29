@@ -156,7 +156,8 @@ async def get_zeus_response(user_id: str, text: str) -> str:
 
 _STRICT_ADK_FAILURE_MESSAGE = (
     "Pantheon analysis did not finish: the ADK swarm returned no response or hit an error. "
-    "Verify GOOGLE_API_KEY or GEMINI_API, SANDBOX_API_URL, and that Hephaestus is running; "
+    "Verify AI credentials (GOOGLE_API_KEY / GEMINI_API, or Vertex: GOOGLE_GENAI_USE_VERTEXAI "
+    "and GOOGLE_CLOUD_PROJECT), SANDBOX_API_URL, and that Hephaestus is running; "
     "then send /reset and try again."
 )
 

@@ -8,7 +8,8 @@
 # Prerequisites:
 #   - gcloud CLI installed and authenticated (gcloud auth login)
 #   - GCP project with billing enabled
-#   - .env populated with GOOGLE_API_KEY (or GEMINI_API) and other secrets
+#   - .env with AI Studio keys (GOOGLE_API_KEY / GEMINI_API) OR Vertex AI
+#     (GOOGLE_GENAI_USE_VERTEXAI + GCP_PROJECT_ID + ADC / workload identity)
 #
 # Usage:
 #   export GCP_PROJECT_ID=your-project-id
@@ -35,8 +36,21 @@ if [[ -z "${GCP_PROJECT_ID:-}" ]]; then
 fi
 [[ -n "${GCP_PROJECT_ID:-}" ]] || die "GCP_PROJECT_ID is required. Set it in .env or export it."
 
-API_KEY="${GOOGLE_API_KEY:-${GEMINI_API:-}}"
-[[ -n "$API_KEY" ]] || die "GOOGLE_API_KEY (or GEMINI_API) is required in .env"
+VERTEX_FLAG="${GOOGLE_GENAI_USE_VERTEXAI:-}"
+VERTEX_LC=$(printf '%s' "${VERTEX_FLAG}" | tr '[:upper:]' '[:lower:]')
+USE_VERTEX=0
+case "${VERTEX_LC}" in 1|true|yes|on) USE_VERTEX=1 ;; esac
+
+if [[ "$USE_VERTEX" -eq 1 ]]; then
+  LOC="${GOOGLE_CLOUD_LOCATION:-us-central1}"
+  PANTHEON_ENV="GOOGLE_GENAI_USE_VERTEXAI=TRUE,GOOGLE_CLOUD_PROJECT=${GCP_PROJECT_ID},GOOGLE_CLOUD_LOCATION=${LOC},PANTHEON_ADK_ALLOW_ORIGINS=*"
+  IMPACT_ENV="GOOGLE_GENAI_USE_VERTEXAI=TRUE,GOOGLE_CLOUD_PROJECT=${GCP_PROJECT_ID},GOOGLE_CLOUD_LOCATION=${LOC},PANTHEON_ADK_AGENTS_DIR=/app/adk_apps/impact_agent,PANTHEON_ADK_ALLOW_ORIGINS=*"
+else
+  API_KEY="${GOOGLE_API_KEY:-${GEMINI_API:-}}"
+  [[ -n "$API_KEY" ]] || die "GOOGLE_API_KEY (or GEMINI_API) is required in .env unless using Vertex (GOOGLE_GENAI_USE_VERTEXAI)"
+  PANTHEON_ENV="GOOGLE_API_KEY=${API_KEY},PANTHEON_ADK_ALLOW_ORIGINS=*"
+  IMPACT_ENV="GOOGLE_API_KEY=${API_KEY},PANTHEON_ADK_AGENTS_DIR=/app/adk_apps/impact_agent,PANTHEON_ADK_ALLOW_ORIGINS=*"
+fi
 
 REGISTRY="${REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${REPO_NAME}"
 IMAGE="${REGISTRY}/${IMAGE_NAME}"
@@ -100,7 +114,7 @@ COMMON_FLAGS=(
 log "Deploying ${PANTHEON_SERVICE}..."
 gcloud run deploy "$PANTHEON_SERVICE" \
   "${COMMON_FLAGS[@]}" \
-  --set-env-vars "GOOGLE_API_KEY=${API_KEY},PANTHEON_ADK_ALLOW_ORIGINS=*"
+  --set-env-vars "${PANTHEON_ENV}"
 
 PANTHEON_URL="$(gcloud run services describe "$PANTHEON_SERVICE" \
   --project "$GCP_PROJECT_ID" \
@@ -111,7 +125,7 @@ PANTHEON_URL="$(gcloud run services describe "$PANTHEON_SERVICE" \
 log "Deploying ${IMPACT_SERVICE}..."
 gcloud run deploy "$IMPACT_SERVICE" \
   "${COMMON_FLAGS[@]}" \
-  --set-env-vars "GOOGLE_API_KEY=${API_KEY},PANTHEON_ADK_AGENTS_DIR=/app/adk_apps/impact_agent,PANTHEON_ADK_ALLOW_ORIGINS=*"
+  --set-env-vars "${IMPACT_ENV}"
 
 IMPACT_URL="$(gcloud run services describe "$IMPACT_SERVICE" \
   --project "$GCP_PROJECT_ID" \

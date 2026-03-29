@@ -11,12 +11,11 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from google import genai
 from google.genai import types as genai_types
 
-from agents.model_config import get_next_gemini_api_key
+from agents.model_config import LITE_MODEL, get_genai_client
 
-_MODEL: str = "gemini-2.5-flash"
+_MODEL: str = LITE_MODEL
 
 # Threat categories based on NextEra Energy challenge taxonomy
 _THREAT_CATEGORIES: list[str] = [
@@ -48,12 +47,6 @@ Respond with a JSON object containing exactly these fields:
 Sample information:
 {sample_info}
 """.format(categories=str(_THREAT_CATEGORIES), sample_info="{sample_info}")
-
-
-def _gemini_client() -> genai.Client:
-    """Return an authenticated Gemini client using round-robin key rotation."""
-    api_key = get_next_gemini_api_key()
-    return genai.Client(api_key=api_key)
 
 
 async def classify_threat(
@@ -90,7 +83,7 @@ async def classify_threat(
         sample_info += f"Content preview:\n{content_preview[:500]}"
 
     prompt = _CLASSIFICATION_PROMPT.format(sample_info=sample_info)
-    client = _gemini_client()
+    client = get_genai_client()
     response = await client.aio.models.generate_content(
         model=_MODEL,
         contents=prompt,

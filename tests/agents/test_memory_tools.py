@@ -120,7 +120,7 @@ async def test_synthesize_calls_gemini_and_stores_result() -> None:
 
     with patch("agents.tools.memory_tools.load_prior_runs", AsyncMock(return_value=two_runs)), \
          patch("agents.tools.memory_tools.store_agent_output", AsyncMock(return_value={"run_number": 3, "total_runs": 3})), \
-         patch("agents.tools.memory_tools._gemini_client", return_value=mock_client_instance):
+         patch("agents.tools.memory_tools.get_genai_client", return_value=mock_client_instance):
         result = await synthesize_prior_runs("job1", "ares")
 
     assert result == "synthesized consensus plan"

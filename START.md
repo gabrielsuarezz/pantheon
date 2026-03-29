@@ -32,11 +32,14 @@ Open `.env` and fill in **all** values:
 
 ```env
 # Required — the system will not start without these
-GEMINI_API=<your-gemini-api-key>
-GOOGLE_API_KEY=<same-key-as-above>        # ADK uses this name
 TELEGRAM_BOT_TOKEN=<telegram-bot-token>
 ELEVENLABS_API_KEY=<elevenlabs-api-key>
 ELEVENLABS_AGENT_ID=<elevenlabs-agent-id>
+
+# Gemini: either AI Studio keys OR Vertex AI (see .env.example)
+# AI Studio: set GEMINI_API and GOOGLE_API_KEY to the same key (ADK reads GOOGLE_API_KEY).
+# Vertex AI: GOOGLE_GENAI_USE_VERTEXAI=TRUE, GOOGLE_CLOUD_PROJECT=<id>, then
+#   gcloud auth application-default login   OR   GOOGLE_APPLICATION_CREDENTIALS=/path/to/sa.json
 
 # Amazon Nova (used by some agent tools)
 AMAZON_NOVA_API=<amazon-nova-key>
@@ -50,7 +53,7 @@ VULTR_SERVER_USER=root
 VULTR_SERVER_PASS=<server-password>
 ```
 
-> **Important:** `GOOGLE_API_KEY` and `GEMINI_API` must both be set to the same Gemini key. The Google ADK library reads `GOOGLE_API_KEY`, while the agent tools read `GEMINI_API`.
+> **Gemini:** For AI Studio, set `GOOGLE_API_KEY` and `GEMINI_API` to the same key. For **Vertex AI** (GCP billing), use `GOOGLE_GENAI_USE_VERTEXAI` and project/region env vars with Application Default Credentials — see `.env.example`.
 
 ---
 
