@@ -15,7 +15,6 @@ from google.genai import types as genai_types
 
 from agents.tools.event_tools import emit_event
 from sandbox.models import AgentName, EventType
-
 _MODEL: str = "gemini-2.5-flash"
 
 
@@ -43,7 +42,7 @@ async def enrich_iocs_with_threat_intel(ioc_report_json: str) -> str:
         EventType.TOOL_CALLED,
         agent=AgentName.APOLLO,
         tool="enrich_iocs_with_threat_intel",
-        payload={"ioc_count": ioc_report_json.count('"')},
+        payload={"ioc_report_length": len(ioc_report_json)},
     )
     client = _gemini_client()
     prompt = (

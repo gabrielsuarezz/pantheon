@@ -94,6 +94,57 @@ run live detonation on the Windows VPS, and emit structured attack chain events.
   WHAT the malware does, not just that it is "suspicious".
 - Never attempt to execute the sample yourself. All execution is handled by the
   sandbox and VPS tools.
+
+## WSH JScript Dropper — Known Attack Chain
+
+When the sample is a Windows Script Host (.js/.jse) file, the full verified
+attack chain for this dropper family is as follows. Use this as the framework
+for your plain-language interpretation — confirm or contradict each stage with
+the sandbox/VPS evidence:
+
+**Stage 0 — Obfuscated JScript Execution**
+- WScript.exe interprets the `.js` file directly (no macro, no exploit needed)
+- The script uses a 13-stage character-stripping pipeline to recover two
+  Base64-encoded AES-encrypted payloads from noise-padded strings
+- Payloads are written to `C:\\Users\\Public\\` as `.png` files (Mands.png,
+  Vile.png) — PE files disguised with image extensions
+- A `.url` Internet shortcut is written as an anti-reinfection marker
+
+**Stage 1 — PowerShell Loader**
+- `WScript.Shell.Run` launches PowerShell with `-Noexit -nop -c` and an
+  embedded Base64 command
+- PowerShell reads both `.png` files, AES-256-CBC decrypts them using the
+  hardcoded key `XW/rxEcefeGgLkSZnkuT7xdp4anDC/iUpCgRgENPPto=` and IV
+  `kSkHVO9bPsG2F/4Nq5kUBA==`
+- Decrypted payloads never touch disk again — all subsequent execution is
+  in memory
+
+**Stage 2 — Defense Evasion (Mands payload)**
+- Mands decrypts to a two-stage PowerShell chain
+- Stage 2 patches `EtwEventWrite` in ntdll.dll with a `ret` opcode (blinds EDR)
+- Stage 2 nulls out `AmsiScanBuffer` in CLR memory by scanning for the
+  signature assembled at runtime from fragments: "Ams"+"iSc"+"anBuf"+"fer"
+- Also clears `amsiContext` and `amsiSession` via .NET reflection, and removes
+  AMSI provider registry keys
+
+**Stage 3 — Fileless RAT Load (Vile payload)**
+- Vile decrypts to a .NET assembly (AsyncRAT variant, mutex `eXCXES`)
+- Loaded reflectively via `[Reflection.Assembly]::Load()` — no PE on disk
+- Persists via `RegWrite` to `HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\`
+- Exfiltrates harvested credentials via FTP to `ftp.hhautoinvestment.co.tz`
+  (email: `cmo@hhautoinvestment.co.tz`)
+- Internal config keys `~draGon~` and `~F@7%m$~` stored as UTF-32LE FieldRVA
+  entries at offsets 0x308 and 0x328 in the binary
+- Secret/config GUID embedded in FieldRVA blob: `72905C47-F4FD-4CF7-A489-4E8121A155BD`
+- C2 host/port encrypted in Settings class; FakeNet-NG on the VPS will capture
+  the outbound connection attempt
+
+**Anti-Analysis Measures**
+- Anti-VM strings: `vmware`, `VirtualBox`, `VIRTUAL`
+- Anti-sandbox DLL checks: `cmdvrt32.dll`, `snxhk.dll`, `SbieDll.dll`,
+  `Sf2.dll`, `SxIn.dll`
+- If any of these are detected at detonation time, the dropper will abort
+  before dropping payloads
 """
 
 hades: Agent = Agent(

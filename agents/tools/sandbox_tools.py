@@ -10,17 +10,30 @@ import asyncio
 import base64
 import os
 import uuid
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Any
 
 import httpx
 
-from sandbox.models import AnalyzeRequest, AnalyzeResponse, AgentName, EventType, HealthResponse, IOCReport, ThreatReport
 from agents.tools.event_tools import emit_event
+from sandbox.models import (
+    AgentName,
+    AnalyzeRequest,
+    AnalyzeResponse,
+    EventType,
+    HealthResponse,
+    IOCReport,
+    ThreatReport,
+)
 
 _SANDBOX_URL: str = os.getenv("SANDBOX_API_URL", "http://sandbox:9000")
 _POLL_INTERVAL: float = 2.0
 _MAX_POLLS: int = 30
+_SUPPRESS_REPORT_EVENTS: ContextVar[bool] = ContextVar(
+    "_SUPPRESS_REPORT_EVENTS",
+    default=False,
+)
 
 
 async def submit_sample(file_path: str, analysis_type: str = "both") -> dict[str, str]:
@@ -83,8 +96,6 @@ async def _fetch_report(job_id: str) -> dict[str, Any]:  # Any: pydantic model_d
         resp.raise_for_status()
         report = ThreatReport.model_validate(resp.json())
     return report.model_dump()
-
-
 async def get_report(job_id: str) -> dict[str, Any]:  # Any: pydantic model_dump()
     """Fetch the current threat analysis report for a sandbox job.
 
@@ -97,21 +108,23 @@ async def get_report(job_id: str) -> dict[str, Any]:  # Any: pydantic model_dump
     Returns:
         Dict representation of :class:`~sandbox.models.ThreatReport`.
     """
-    await emit_event(
-        EventType.TOOL_CALLED,
-        agent=AgentName.HADES,
-        tool="get_report",
-        job_id=job_id,
-        payload={"job_id": job_id},
-    )
+    if not _SUPPRESS_REPORT_EVENTS.get():
+        await emit_event(
+            EventType.TOOL_CALLED,
+            agent=AgentName.HADES,
+            tool="get_report",
+            job_id=job_id,
+            payload={"job_id": job_id},
+        )
     report = await _fetch_report(job_id)
-    await emit_event(
-        EventType.TOOL_RESULT,
-        agent=AgentName.HADES,
-        tool="get_report",
-        job_id=job_id,
-        payload={"status": report.get("status")},
-    )
+    if not _SUPPRESS_REPORT_EVENTS.get():
+        await emit_event(
+            EventType.TOOL_RESULT,
+            agent=AgentName.HADES,
+            tool="get_report",
+            job_id=job_id,
+            payload={"status": report.get("status")},
+        )
     return report
 
 
@@ -132,6 +145,7 @@ async def get_iocs(job_id: str) -> dict[str, Any]:  # Any: pydantic model_dump()
         EventType.TOOL_CALLED,
         agent=AgentName.APOLLO,
         tool="get_iocs",
+        job_id=job_id,
         payload={"job_id": job_id},
     )
     async with httpx.AsyncClient(timeout=30.0) as client:
@@ -175,18 +189,22 @@ async def poll_report(job_id: str) -> dict[str, Any]:  # Any: pydantic model_dum
         tool="poll_report",
         payload={"job_id": job_id},
     )
-    for _ in range(_MAX_POLLS):
-        report = await _fetch_report(job_id)
-        if report.get("status") in ("complete", "failed"):
-            await emit_event(
-                EventType.TOOL_RESULT,
-                agent=AgentName.HADES,
-                tool="poll_report",
-                job_id=job_id,
-                payload={"status": report.get("status")},
-            )
-            return report
-        await asyncio.sleep(_POLL_INTERVAL)
+    token = _SUPPRESS_REPORT_EVENTS.set(True)
+    try:
+        for _ in range(_MAX_POLLS):
+            report = await get_report(job_id)
+            if report.get("status") in ("complete", "failed"):
+                await emit_event(
+                    EventType.TOOL_RESULT,
+                    agent=AgentName.HADES,
+                    tool="poll_report",
+                    job_id=job_id,
+                    payload={"status": report.get("status")},
+                )
+                return report
+            await asyncio.sleep(_POLL_INTERVAL)
+    finally:
+        _SUPPRESS_REPORT_EVENTS.reset(token)
 
     raise TimeoutError(
         f"Sandbox job {job_id!r} did not complete within "

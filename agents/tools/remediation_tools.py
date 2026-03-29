@@ -14,7 +14,6 @@ from google.genai import types as genai_types
 
 from agents.tools.event_tools import emit_event
 from sandbox.models import AgentName, EventType
-
 _MODEL: str = "gemini-2.5-flash"
 
 _CONTAINMENT_PROMPT = """\
