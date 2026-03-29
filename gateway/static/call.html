@@ -4,135 +4,529 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Pantheon — Voice Call</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --gold: #d4a843;
+      --gold-light: #f0c040;
+      --gold-dim: rgba(212, 168, 67, 0.12);
+      --red: #e74c3c;
+      --green: #2ecc71;
+      --bg-primary: #0a0e14;
+      --bg-card: #111820;
+      --bg-elevated: #1a2230;
+      --text-primary: #eaf0f6;
+      --text-secondary: #6b7d93;
+      --text-muted: #3d4f63;
+      --border: rgba(212, 168, 67, 0.15);
+    }
+
     * { margin: 0; padding: 0; box-sizing: border-box; }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #0d1117;
-      color: #e6edf3;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* --- Subtle grid background --- */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 50% 0%, rgba(212,168,67,0.06) 0%, transparent 60%),
+        linear-gradient(180deg, rgba(10,14,20,0) 0%, rgba(10,14,20,1) 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* --- Header --- */
+    .header {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 20px 24px 12px;
+    }
+
+    .logo {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--gold) 0%, #b8862d 100%);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 2px 12px rgba(212,168,67,0.25);
+    }
+
+    .header-text h1 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+    }
+
+    .header-text span {
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    /* --- Agent card --- */
+    .agent-section {
+      position: relative;
+      z-index: 1;
+      flex: 0 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 28px 24px 20px;
+    }
+
+    .avatar-ring {
+      position: relative;
+      width: 100px; height: 100px;
+    }
+
+    .avatar-ring::before {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      transition: all 0.5s ease;
+    }
+
+    .avatar-ring.active::before {
+      border-color: var(--gold);
+      box-shadow: 0 0 24px rgba(212,168,67,0.3);
+    }
+
+    .avatar-ring.listening::before {
+      border-color: var(--green);
+      box-shadow: 0 0 24px rgba(46,204,113,0.3);
+      animation: breathe 2s ease-in-out infinite;
+    }
+
+    .avatar-ring.speaking::before {
+      border-color: var(--gold-light);
+      box-shadow: 0 0 32px rgba(240,192,64,0.35);
+      animation: speak-pulse 0.8s ease-in-out infinite;
+    }
+
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); opacity: 0.7; }
+      50% { transform: scale(1.06); opacity: 1; }
+    }
+
+    @keyframes speak-pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.04); }
+    }
+
+    .avatar {
+      width: 100%; height: 100%;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #1a2538, #0f1722);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 44px;
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.4);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Animated waveform inside avatar when active */
+    .waveform {
+      position: absolute;
+      bottom: 18px;
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .waveform.visible { opacity: 1; }
+
+    .waveform .bar {
+      width: 3px;
+      background: var(--gold);
+      border-radius: 2px;
+      animation: wave 1.2s ease-in-out infinite;
+    }
+
+    .waveform .bar:nth-child(1) { height: 8px; animation-delay: 0s; }
+    .waveform .bar:nth-child(2) { height: 14px; animation-delay: 0.15s; }
+    .waveform .bar:nth-child(3) { height: 20px; animation-delay: 0.3s; }
+    .waveform .bar:nth-child(4) { height: 14px; animation-delay: 0.45s; }
+    .waveform .bar:nth-child(5) { height: 8px; animation-delay: 0.6s; }
+
+    @keyframes wave {
+      0%, 100% { transform: scaleY(0.4); }
+      50% { transform: scaleY(1); }
+    }
+
+    .agent-name {
+      margin-top: 14px;
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    #status {
+      margin-top: 4px;
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: color 0.3s;
+    }
+
+    #status .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      transition: background 0.3s;
+    }
+
+    #status.connected .dot { background: var(--green); }
+    #status.error .dot { background: var(--red); }
+
+    /* --- Transcript --- */
+    .transcript-section {
+      position: relative;
+      z-index: 1;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      padding: 0 16px;
+    }
+
+    .transcript-label {
+      font-size: 0.68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      padding: 0 8px 8px;
+    }
+
+    #transcript {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 4px 12px;
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    #transcript::-webkit-scrollbar { width: 3px; }
+    #transcript::-webkit-scrollbar-track { background: transparent; }
+    #transcript::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
+
+    .msg {
+      margin-bottom: 10px;
+      padding: 10px 14px;
+      border-radius: 14px;
+      font-size: 0.82rem;
+      line-height: 1.55;
+      max-width: 88%;
+      animation: msg-in 0.25s ease-out;
+    }
+
+    @keyframes msg-in {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg.agent {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+      color: var(--text-primary);
+    }
+
+    .msg.user {
+      background: linear-gradient(135deg, rgba(212,168,67,0.15), rgba(212,168,67,0.08));
+      border: 1px solid rgba(212,168,67,0.2);
+      border-bottom-right-radius: 4px;
+      margin-left: auto;
+      text-align: right;
+    }
+
+    .msg .label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-secondary);
+      display: block;
+      margin-bottom: 3px;
+    }
+
+    .msg.agent .label { color: var(--gold); }
+
+    .empty-state {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-height: 100vh;
-      padding: 20px;
+      padding: 40px 20px;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      text-align: center;
+      line-height: 1.5;
     }
-    h1 {
-      font-size: 1.4rem;
-      margin-bottom: 8px;
-      color: #f0c040;
+
+    .empty-state svg {
+      width: 40px; height: 40px;
+      margin-bottom: 12px;
+      opacity: 0.3;
     }
-    .subtitle {
-      font-size: 0.85rem;
-      color: #8b949e;
-      margin-bottom: 32px;
+
+    /* --- Controls --- */
+    .controls {
+      position: relative;
+      z-index: 1;
+      padding: 16px 24px 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
     }
+
     #call-btn {
-      width: 120px;
-      height: 120px;
+      width: 68px; height: 68px;
       border-radius: 50%;
-      border: 3px solid #f0c040;
-      background: rgba(240, 192, 64, 0.1);
+      border: none;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.3s ease;
-      font-size: 48px;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      position: relative;
+      background: linear-gradient(145deg, var(--gold), #b8862d);
+      box-shadow: 0 4px 20px rgba(212,168,67,0.35), 0 0 0 0 rgba(212,168,67,0);
     }
-    #call-btn:hover { background: rgba(240, 192, 64, 0.2); }
+
+    #call-btn:hover {
+      transform: scale(1.06);
+      box-shadow: 0 6px 28px rgba(212,168,67,0.45), 0 0 0 0 rgba(212,168,67,0);
+    }
+
+    #call-btn:active { transform: scale(0.96); }
+
+    #call-btn svg {
+      width: 28px; height: 28px;
+      fill: #0a0e14;
+      transition: all 0.3s;
+    }
+
     #call-btn.active {
-      border-color: #f85149;
-      background: rgba(248, 81, 73, 0.15);
-      animation: pulse 1.5s infinite;
+      background: linear-gradient(145deg, var(--red), #c0392b);
+      box-shadow: 0 4px 20px rgba(231,76,60,0.35);
+      animation: btn-pulse 2s ease-in-out infinite;
     }
-    @keyframes pulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(248, 81, 73, 0.4); }
-      50% { box-shadow: 0 0 0 16px rgba(248, 81, 73, 0); }
+
+    @keyframes btn-pulse {
+      0%, 100% { box-shadow: 0 4px 20px rgba(231,76,60,0.35), 0 0 0 0 rgba(231,76,60,0.2); }
+      50% { box-shadow: 0 4px 20px rgba(231,76,60,0.35), 0 0 0 12px rgba(231,76,60,0); }
     }
-    #status {
-      margin-top: 24px;
-      font-size: 0.9rem;
-      color: #8b949e;
-      text-align: center;
-      min-height: 1.2em;
+
+    .btn-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      letter-spacing: 0.03em;
     }
-    #transcript {
-      margin-top: 24px;
-      width: 100%;
-      max-width: 400px;
-      max-height: 300px;
-      overflow-y: auto;
+
+    /* --- Timer --- */
+    #timer {
       font-size: 0.82rem;
-      line-height: 1.5;
-      color: #c9d1d9;
+      font-weight: 600;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+      opacity: 0;
+      transition: opacity 0.3s;
     }
-    .msg { margin-bottom: 8px; padding: 8px 12px; border-radius: 8px; }
-    .msg.user { background: #1c2333; text-align: right; }
-    .msg.agent { background: #1a2a1a; }
-    .msg .label { font-size: 0.7rem; color: #8b949e; display: block; margin-bottom: 2px; }
+
+    #timer.visible { opacity: 1; color: var(--text-secondary); }
+
+    /* --- Responsive --- */
+    @media (max-height: 600px) {
+      .agent-section { padding: 16px 24px 12px; }
+      .avatar-ring { width: 72px; height: 72px; }
+      .avatar { font-size: 32px; }
+    }
   </style>
 </head>
 <body>
-  <h1>Pantheon</h1>
-  <p class="subtitle">Tap to speak with the AI agent</p>
 
-  <button id="call-btn">&#128222;</button>
-  <div id="status">Ready</div>
-  <div id="transcript"></div>
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#0a0e14" stroke-width="2.5" stroke-linecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+    </div>
+    <div class="header-text">
+      <h1>Pantheon</h1>
+      <span>Threat Intelligence Agent</span>
+    </div>
+  </div>
+
+  <!-- Agent avatar -->
+  <div class="agent-section">
+    <div class="avatar-ring" id="avatar-ring">
+      <div class="avatar" id="avatar-icon">
+        <svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="var(--gold)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>
+        <div class="waveform" id="waveform">
+          <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+        </div>
+      </div>
+    </div>
+    <div class="agent-name">Pantheon AI</div>
+    <div id="status"><span class="dot"></span>Ready to connect</div>
+    <div id="timer">00:00</div>
+  </div>
+
+  <!-- Transcript -->
+  <div class="transcript-section">
+    <div class="transcript-label">Conversation</div>
+    <div id="transcript">
+      <div class="empty-state" id="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Tap the button below to start a live<br>voice conversation with the agent
+      </div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button id="call-btn" aria-label="Start voice call">
+      <svg id="btn-icon-phone" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+      <svg id="btn-icon-stop" viewBox="0 0 24 24" style="display:none"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+    </button>
+    <span class="btn-label" id="btn-label">Tap to connect</span>
+  </div>
 
   <script type="module">
     const btn = document.getElementById('call-btn');
+    const btnLabel = document.getElementById('btn-label');
     const statusEl = document.getElementById('status');
     const transcriptEl = document.getElementById('transcript');
+    const emptyState = document.getElementById('empty-state');
+    const avatarRing = document.getElementById('avatar-ring');
+    const waveform = document.getElementById('waveform');
+    const timerEl = document.getElementById('timer');
+    const iconPhone = document.getElementById('btn-icon-phone');
+    const iconStop = document.getElementById('btn-icon-stop');
 
     let conversation = null;
     let isActive = false;
+    let timerInterval = null;
+    let seconds = 0;
 
-    function setStatus(text) {
-      statusEl.textContent = text;
+    function setStatus(text, state = '') {
+      statusEl.innerHTML = `<span class="dot"></span>${text}`;
+      statusEl.className = state;
+    }
+
+    function startTimer() {
+      seconds = 0;
+      timerEl.classList.add('visible');
+      timerEl.textContent = '00:00';
+      timerInterval = setInterval(() => {
+        seconds++;
+        const m = String(Math.floor(seconds / 60)).padStart(2, '0');
+        const s = String(seconds % 60).padStart(2, '0');
+        timerEl.textContent = `${m}:${s}`;
+      }, 1000);
+    }
+
+    function stopTimer() {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      timerEl.classList.remove('visible');
+    }
+
+    function setMode(mode) {
+      avatarRing.className = 'avatar-ring';
+      waveform.classList.remove('visible');
+
+      if (mode === 'active') {
+        avatarRing.classList.add('active');
+      } else if (mode === 'listening') {
+        avatarRing.classList.add('listening');
+      } else if (mode === 'speaking') {
+        avatarRing.classList.add('speaking');
+        waveform.classList.add('visible');
+      }
     }
 
     function addMessage(role, text) {
+      if (emptyState) emptyState.remove();
       const div = document.createElement('div');
       div.className = `msg ${role}`;
-      div.innerHTML = `<span class="label">${role === 'user' ? 'You' : 'Pantheon'}</span>${text}`;
+      const label = role === 'user' ? 'You' : 'Pantheon';
+      div.innerHTML = `<span class="label">${label}</span>${text}`;
       transcriptEl.appendChild(div);
       transcriptEl.scrollTop = transcriptEl.scrollHeight;
     }
 
+    function setCallUI(active) {
+      isActive = active;
+      btn.classList.toggle('active', active);
+      iconPhone.style.display = active ? 'none' : 'block';
+      iconStop.style.display = active ? 'block' : 'none';
+      btnLabel.textContent = active ? 'Tap to end call' : 'Tap to connect';
+    }
+
     async function startCall() {
-      setStatus('Connecting...');
+      setStatus('Connecting...', '');
+      btnLabel.textContent = 'Connecting...';
+
       try {
-        // Fetch agent config from our backend.
         const resp = await fetch('/api/agent-config');
         const { agent_id } = await resp.json();
         if (!agent_id) {
-          setStatus('Error: No agent configured');
+          setStatus('Agent not configured', 'error');
+          btnLabel.textContent = 'Tap to connect';
           return;
         }
 
-        // Dynamically import the ElevenLabs client SDK.
         const { Conversation } = await import(
           'https://cdn.jsdelivr.net/npm/@11labs/client@latest/+esm'
         );
 
-        // Request mic permission.
         await navigator.mediaDevices.getUserMedia({ audio: true });
 
         conversation = await Conversation.startSession({
           agentId: agent_id,
           onConnect: () => {
-            setStatus('Connected — speak now');
-            btn.classList.add('active');
-            btn.innerHTML = '&#9724;';
-            isActive = true;
+            setCallUI(true);
+            setStatus('Connected', 'connected');
+            setMode('active');
+            startTimer();
           },
           onDisconnect: () => {
-            setStatus('Call ended');
-            btn.classList.remove('active');
-            btn.innerHTML = '&#128222;';
-            isActive = false;
+            setCallUI(false);
+            setStatus('Call ended', '');
+            setMode('idle');
+            stopTimer();
             conversation = null;
           },
           onMessage: ({ message, source }) => {
@@ -142,49 +536,41 @@
           },
           onError: (error) => {
             console.error('ElevenLabs error:', error);
-            setStatus('Error: ' + (error.message || 'Connection failed'));
+            setStatus(error.message || 'Connection failed', 'error');
           },
           onModeChange: ({ mode }) => {
             if (mode === 'listening') {
-              setStatus('Listening...');
+              setStatus('Listening...', 'connected');
+              setMode('listening');
             } else if (mode === 'speaking') {
-              setStatus('Pantheon is speaking...');
+              setStatus('Speaking...', 'connected');
+              setMode('speaking');
             }
           },
         });
       } catch (err) {
         console.error(err);
-        setStatus('Error: ' + (err.message || 'Failed to start'));
-        btn.classList.remove('active');
-        btn.innerHTML = '&#128222;';
-        isActive = false;
+        setStatus(err.message || 'Failed to connect', 'error');
+        setCallUI(false);
+        setMode('idle');
       }
     }
 
     async function endCall() {
       if (conversation) {
-        try {
-          await conversation.endSession();
-        } catch (e) {
-          console.warn('End session error:', e);
-        }
+        try { await conversation.endSession(); } catch (e) { /* ok */ }
       }
-      btn.classList.remove('active');
-      btn.innerHTML = '&#128222;';
-      isActive = false;
+      setCallUI(false);
+      setStatus('Call ended', '');
+      setMode('idle');
+      stopTimer();
       conversation = null;
-      setStatus('Call ended');
     }
 
     btn.addEventListener('click', () => {
-      if (isActive) {
-        endCall();
-      } else {
-        startCall();
-      }
+      if (isActive) { endCall(); } else { startCall(); }
     });
 
-    // If running inside Telegram Mini App, expand to full height.
     if (window.Telegram && window.Telegram.WebApp) {
       window.Telegram.WebApp.expand();
       window.Telegram.WebApp.ready();
