@@ -65,3 +65,30 @@ def test_get_iocs_found(client: TestClient) -> None:
         resp = client.get("/sandbox/iocs/abc123")
     assert resp.status_code == 200
     assert "1.2.3.4" in resp.json()["ips"]
+
+
+def test_post_events_returns_204(client: TestClient) -> None:
+    from sandbox.models import EventType, PantheonEvent
+    event = PantheonEvent(type=EventType.AGENT_ACTIVATED, agent=None)
+    resp = client.post("/events", content=event.model_dump_json(), headers={"Content-Type": "application/json"})
+    assert resp.status_code == 204
+
+
+def test_post_events_bad_payload_returns_422(client: TestClient) -> None:
+    resp = client.post("/events", json={"not_a_valid": "event"})
+    assert resp.status_code == 422
+
+
+def test_websocket_connects_and_receives_event(client: TestClient) -> None:
+    import json
+    from sandbox.models import EventType, PantheonEvent
+    event = PantheonEvent(type=EventType.TOOL_CALLED, tool="submit_sample")
+
+    with client.websocket_connect("/ws") as ws:
+        # Post an event via HTTP — bus should broadcast it to the WS connection
+        client.post("/events", content=event.model_dump_json(), headers={"Content-Type": "application/json"})
+        data = ws.receive_text()
+
+    received = json.loads(data)
+    assert received["type"] == "tool_called"
+    assert received["tool"] == "submit_sample"

@@ -5,15 +5,17 @@ import logging
 
 import docker
 import docker.errors
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket
 
 from sandbox.analyzer import Analyzer
+from sandbox.events import bus
 from sandbox.models import (
     AnalyzeRequest,
     AnalyzeResponse,
     HealthResponse,
     IOCReport,
     MemoryEntry,
+    PantheonEvent,
     SimilarJob,
     StoreMemoryRequest,
     StoreMemoryResponse,
@@ -103,3 +105,15 @@ def store_fingerprint(job_id: str) -> dict[str, str]:
 def find_similar(job_id: str) -> list[SimilarJob]:
     """Return jobs with behavioral similarity to the given job."""
     return _analyzer.find_similar(job_id)
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket) -> None:
+    """Stream PantheonEvents to connected dashboard clients."""
+    await bus.subscribe(websocket)
+
+
+@app.post("/events", status_code=204)
+async def receive_event(event: PantheonEvent) -> None:
+    """Accept an event from any agent and broadcast it to all /ws subscribers."""
+    bus.publish(event)
