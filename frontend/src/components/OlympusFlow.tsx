@@ -276,7 +276,15 @@ const edgeTypes = {
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 
-export default function OlympusFlow({ store, onSelect }: { store: EventStore, onSelect: (agent: AgentStatus) => void }) {
+export default function OlympusFlow({
+  store,
+  onSelect,
+  onSecretTrigger,
+}: {
+  store: EventStore;
+  onSelect: (agent: AgentStatus) => void;
+  onSecretTrigger?: () => void;
+}) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
@@ -378,10 +386,15 @@ export default function OlympusFlow({ store, onSelect }: { store: EventStore, on
         />
         
         <Panel position="top-right" className="m-4">
-          <div className="glass-panel px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest text-gold-dark flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onSecretTrigger}
+            className="glass-panel px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest text-gold-dark flex items-center gap-2 cursor-pointer"
+            title="Agent Network"
+          >
             <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
             Agent Network
-          </div>
+          </button>
         </Panel>
       </ReactFlow>
     </div>

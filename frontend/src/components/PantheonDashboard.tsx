@@ -2,9 +2,25 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Zap, Shield, AlertTriangle, Activity, X, Radio, ScanLine, FlaskConical, Globe, ShieldAlert, type LucideIcon } from "lucide-react";
+import Link from "next/link";
 import GodCard, {
   AgentDef, AgentId, Badge, ThoughtEntry, BADGE_STYLES,
 } from "./GodCard";
+
+const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
+
+const formatMissionClock = (ms: number): string => {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const minutes = Math.floor(total / 60).toString().padStart(2, "0");
+  const seconds = (total % 60).toString().padStart(2, "0");
+  return `${minutes}:${seconds}`;
+};
+
+const formatEntryOffset = (startedAt: number | null, timestamp: number): string => {
+  if (!startedAt) return "";
+  const seconds = Math.max(0, (timestamp - startedAt) / 1000);
+  return `+${seconds.toFixed(1)}s`;
+};
 
 const AGENT_ICONS: Record<AgentId, LucideIcon> = {
   zeus:   Zap,
@@ -199,7 +215,10 @@ export default function PantheonDashboard() {
   const [thoughts,        setThoughts]        = useState<ThoughtEntry[]>([]);
   const [a2aLinks,        setA2aLinks]        = useState<A2ALink[]>([]);
   const [runningId,       setRunningId]       = useState<string | null>(null);
+  const [lastScenarioId,  setLastScenarioId]  = useState<string | null>(null);
   const [progress,        setProgress]        = useState<Partial<Record<AgentId, number>>>({});
+  const [missionStartedAt, setMissionStartedAt] = useState<number | null>(null);
+  const [missionNow, setMissionNow] = useState<number>(0);
 
   const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const streamRef   = useRef<HTMLDivElement>(null);
@@ -211,6 +230,13 @@ export default function PantheonDashboard() {
     }
   }, [thoughts]);
 
+  // Mission runtime clock
+  useEffect(() => {
+    if (!missionStartedAt) return;
+    const id = setInterval(() => setMissionNow(Date.now()), 250);
+    return () => clearInterval(id);
+  }, [missionStartedAt]);
+
   // Smooth progress for active agents
   useEffect(() => {
     if (workingAgents.size === 0) return;
@@ -218,28 +244,87 @@ export default function PantheonDashboard() {
       setProgress((prev) => {
         const next = { ...prev };
         workingAgents.forEach((aid) => {
-          next[aid] = Math.min(97, (prev[aid] ?? 0) + Math.random() * 2.5 + 0.4);
+          next[aid] = Math.min(97, (prev[aid] ?? 0) + Math.random() * 2.2 + 0.35);
         });
         return next;
       });
-    }, 180);
+    }, 160);
     return () => clearInterval(id);
   }, [workingAgents]);
 
+  // Cleanup timers when component unmounts
+  useEffect(() => {
+    return () => {
+      timeoutsRef.current.forEach(clearTimeout);
+      timeoutsRef.current = [];
+    };
+  }, []);
+
   // Run a scenario
   const run = useCallback((scenario: Scenario) => {
+    const startedAt = Date.now();
+
     timeoutsRef.current.forEach(clearTimeout);
     timeoutsRef.current = [];
 
-    setWorkingAgents(new Set(scenario.agents));
+    setWorkingAgents(new Set());
     setCompletedAgents(new Set());
     setThoughts([]);
     setA2aLinks([]);
     setRunningId(scenario.id);
+    setLastScenarioId(scenario.id);
+    setMissionStartedAt(startedAt);
+    setMissionNow(startedAt);
     setProgress(Object.fromEntries(scenario.agents.map((id) => [id, 0])));
+
+    // Agents activate and complete in windows derived from actual script timing.
+    scenario.agents.forEach((agentId) => {
+      const thoughtDelays = scenario.thoughts
+        .filter((t) => t.agentId === agentId)
+        .map((t) => t.delay);
+      const linkDelays = scenario.a2a
+        .filter((l) => l.from === agentId || l.to === agentId)
+        .map((l) => l.delay);
+      const firstSeen = Math.min(...[...thoughtDelays, ...linkDelays, 260]);
+      const lastSeen = Math.max(...[
+        ...thoughtDelays,
+        ...scenario.a2a
+          .filter((l) => l.from === agentId || l.to === agentId)
+          .map((l) => l.delay + (l.duration ?? 1200)),
+      ]);
+
+      const activateAt = Math.max(0, firstSeen - 220);
+      const completeAt = Math.min(scenario.duration - 100, Math.max(firstSeen + 600, lastSeen + 500));
+
+      const activateTid = setTimeout(() => {
+        setWorkingAgents((prev) => {
+          const next = new Set(prev);
+          next.add(agentId);
+          return next;
+        });
+        setProgress((prev) => ({ ...prev, [agentId]: Math.max(prev[agentId] ?? 0, 8) }));
+      }, activateAt);
+      timeoutsRef.current.push(activateTid);
+
+      const completeTid = setTimeout(() => {
+        setWorkingAgents((prev) => {
+          const next = new Set(prev);
+          next.delete(agentId);
+          return next;
+        });
+        setCompletedAgents((prev) => {
+          const next = new Set(prev);
+          next.add(agentId);
+          return next;
+        });
+        setProgress((prev) => ({ ...prev, [agentId]: 100 }));
+      }, completeAt);
+      timeoutsRef.current.push(completeTid);
+    });
 
     // Thought stream
     scenario.thoughts.forEach((t) => {
+      const jitter = Math.floor((Math.random() - 0.5) * 160);
       const tid = setTimeout(() => {
         setThoughts((prev) => [
           ...prev,
@@ -251,7 +336,7 @@ export default function PantheonDashboard() {
             timestamp: Date.now(),
           },
         ].slice(-60));
-      }, t.delay);
+      }, Math.max(0, t.delay + jitter));
       timeoutsRef.current.push(tid);
     });
 
@@ -273,6 +358,7 @@ export default function PantheonDashboard() {
       setWorkingAgents(new Set());
       setCompletedAgents(new Set(scenario.agents));
       setRunningId(null);
+      setMissionNow(Date.now());
       setProgress((prev) => {
         const next = { ...prev };
         scenario.agents.forEach((id) => { next[id] = 100; });
@@ -290,6 +376,9 @@ export default function PantheonDashboard() {
     setThoughts([]);
     setA2aLinks([]);
     setRunningId(null);
+    setLastScenarioId(null);
+    setMissionStartedAt(null);
+    setMissionNow(0);
     setProgress({});
   }, []);
 
@@ -301,6 +390,23 @@ export default function PantheonDashboard() {
 
   const isSystemActive = workingAgents.size > 0;
   const activeCount = workingAgents.size;
+  const scenarioContext = SCENARIOS.find((s) => s.id === (runningId ?? lastScenarioId));
+  const elapsedMs = missionStartedAt ? missionNow - missionStartedAt : 0;
+  const eventRate = elapsedMs > 0 ? Math.round(thoughts.length / Math.max(1, elapsedMs / 60000)) : 0;
+  const c2Signals = thoughts.filter((t) => /C2|beacon|team server|critical/i.test(t.text)).length;
+  const iocSignals = thoughts.filter((t) => /IOC|IPs?|domains?|hash|persistence|registry/i.test(t.text)).length;
+  const reportSignals = thoughts.filter((t) => /report|plan|delivery|summary/i.test(t.text)).length;
+  const riskScore = clamp(14 + c2Signals * 13 + iocSignals * 4 + activeCount * 5 - completedAgents.size * 3, 9, 99);
+  const confidence = clamp(
+    Math.round((completedAgents.size / Math.max(1, scenarioContext?.agents.length ?? AGENTS.length)) * 100),
+    0,
+    100,
+  );
+  const incidentState = isSystemActive
+    ? (riskScore > 72 ? "Containment Recommended" : "Triaging")
+    : thoughts.length > 0
+      ? "Incident Packet Ready"
+      : "Awaiting New Alert";
 
   return (
     <div className="min-h-screen flex flex-col" style={{
@@ -348,13 +454,17 @@ export default function PantheonDashboard() {
               {activeCount} agent{activeCount !== 1 ? "s" : ""} active
             </span>
           )}
+          <span className="text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-widest"
+            style={{ background: "rgba(26,18,8,0.04)", color: "rgba(26,18,8,0.52)", border: "1px solid rgba(26,18,8,0.10)" }}>
+            T+ {formatMissionClock(elapsedMs)}
+          </span>
         </div>
 
         <div className="flex items-center gap-3">
-          <a href="/" className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+          <Link href="/" className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
             style={{ color: "#9A7A10", border: "1px solid rgba(201,162,39,0.3)", background: "rgba(201,162,39,0.05)" }}>
             ← Home
-          </a>
+          </Link>
           <button
             onClick={reset}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
@@ -664,6 +774,37 @@ export default function PantheonDashboard() {
             })}
           </div>
 
+          {/* Runtime telemetry */}
+          <div className="px-5 py-3 border-b shrink-0" style={{ borderColor: "rgba(201,162,39,0.10)", background: "rgba(245,240,224,0.32)" }}>
+            <p className="text-[10px] uppercase tracking-widest font-bold mb-2" style={{ color: "rgba(154,122,16,0.8)" }}>
+              Incident Telemetry
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-md px-2 py-1.5" style={{ background: "rgba(255,255,255,0.85)", border: "1px solid rgba(201,162,39,0.15)" }}>
+                <p className="text-[9px] uppercase tracking-wider" style={{ color: "rgba(26,18,8,0.35)" }}>Risk</p>
+                <p className="text-xs font-bold" style={{ color: riskScore > 70 ? "#b91c1c" : "#9A7A10" }}>{riskScore}/99</p>
+              </div>
+              <div className="rounded-md px-2 py-1.5" style={{ background: "rgba(255,255,255,0.85)", border: "1px solid rgba(201,162,39,0.15)" }}>
+                <p className="text-[9px] uppercase tracking-wider" style={{ color: "rgba(26,18,8,0.35)" }}>Events/Min</p>
+                <p className="text-xs font-bold" style={{ color: "#9A7A10" }}>{eventRate}</p>
+              </div>
+              <div className="rounded-md px-2 py-1.5" style={{ background: "rgba(255,255,255,0.85)", border: "1px solid rgba(201,162,39,0.15)" }}>
+                <p className="text-[9px] uppercase tracking-wider" style={{ color: "rgba(26,18,8,0.35)" }}>IOC Signals</p>
+                <p className="text-xs font-bold" style={{ color: "#9A7A10" }}>{iocSignals}</p>
+              </div>
+              <div className="rounded-md px-2 py-1.5" style={{ background: "rgba(255,255,255,0.85)", border: "1px solid rgba(201,162,39,0.15)" }}>
+                <p className="text-[9px] uppercase tracking-wider" style={{ color: "rgba(26,18,8,0.35)" }}>Confidence</p>
+                <p className="text-xs font-bold" style={{ color: "#9A7A10" }}>{confidence}%</p>
+              </div>
+            </div>
+            <div className="mt-2 rounded-md px-2 py-1.5" style={{ background: "rgba(255,255,255,0.85)", border: "1px solid rgba(201,162,39,0.15)" }}>
+              <p className="text-[9px] uppercase tracking-wider" style={{ color: "rgba(26,18,8,0.35)" }}>State</p>
+              <p className="text-[11px] font-semibold" style={{ color: c2Signals > 0 ? "#b91c1c" : "#9A7A10" }}>
+                {incidentState} · C2 indicators: {c2Signals} · reports assembled: {reportSignals}
+              </p>
+            </div>
+          </div>
+
           {/* Stream entries */}
           <div
             ref={streamRef}
@@ -704,6 +845,10 @@ export default function PantheonDashboard() {
                           style={{ background: badge.bg, color: badge.text, border: `1px solid ${badge.border}` }}
                         >
                           {entry.badge}
+                        </span>
+                        <span className="text-[8px] font-bold uppercase tracking-wider"
+                          style={{ color: "rgba(26,18,8,0.30)" }}>
+                          {formatEntryOffset(missionStartedAt, entry.timestamp)}
                         </span>
                       </div>
                       {/* Text */}
