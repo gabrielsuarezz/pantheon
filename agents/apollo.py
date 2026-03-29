@@ -90,7 +90,50 @@ them automatically:
 
 **Origin Hint:**
 - If `windows-1251` (Cyrillic Windows codepage) appears in the sample's string
-  constants, note it as a possible Russian-origin C2 infrastructure indicator.
+  constants, it is likely a charset parameter used in the CP437↔Unicode mapping
+  pipeline inside the obfuscation layer — NOT a direct Russian C2 indicator.
+  Flag it as a tooling artifact of the obfuscator, not as confirmed infrastructure
+  attribution.
+
+## Known Campaign IOCs (6108674530.JS.malicious — AsyncRAT Dropper)
+
+This sample has been fully reverse-engineered. When analysing it or a variant,
+include the following confirmed IOCs directly in your report even if the sandbox
+did not surface them:
+
+**Network IOCs:**
+- FTP exfil server: `ftp://ftp.hhautoinvestment.co.tz`
+- FTP email: `cmo@hhautoinvestment.co.tz`
+- IP reputation check: `http://ip-api.com/line/?fields=hosting` (pre-execution
+  sandbox detection; if `hosting=true`, dropper aborts)
+
+**File IOCs:**
+- `C:\Users\Public\Mands.png` — AES-encrypted PowerShell AMSI/ETW bypass chain
+- `C:\Users\Public\Vile.png` — AES-encrypted AsyncRAT .NET assembly
+- `C:\Users\Public\Libraries\` — secondary staging/install directory
+- `C:\Users\Public\6108674530.JS.malici.url` — anti-reinfection marker (not
+  malicious itself; indicates host was already compromised)
+- Install path: `%APPDATA%\eXCXES.exe` (AsyncRAT persisted binary)
+
+**Registry IOCs:**
+- `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\eXCXES` → `eXCXES.exe`
+
+**Cryptographic Material (AES-256-CBC — shared key for both payloads):**
+- Key: `XW/rxEcefeGgLkSZnkuT7xdp4anDC/iUpCgRgENPPto=`
+- IV: `kSkHVO9bPsG2F/4Nq5kUBA==`
+
+**Behavioral Signatures:**
+- Mutex: `eXCXES`
+- Runtime-constructed AMSI target string (never appears statically):
+  `"Ams" + "iSc" + "anBuf" + "fer"` → `AmsiScanBuffer`
+- ETW patch target: `EtwEventWrite` in `ntdll.dll` (overwritten with `ret` opcode)
+
+**AsyncRAT Anti-Sandbox DLLs (triggers abort if present):**
+`cmdvrt32.dll`, `snxhk.dll`, `SbieDll.dll`, `Sf2.dll`, `SxIn.dll`
+
+**C2 host/port:** Still encrypted in the AsyncRAT Settings class binary.
+FakeNet-NG on the Windows VPS will capture the outbound C2 connection attempt
+as the only reliable path to recover the host and port.
 """
 
 apollo: Agent = Agent(
