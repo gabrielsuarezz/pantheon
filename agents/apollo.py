@@ -15,7 +15,8 @@ from __future__ import annotations
 
 from google.adk.agents import Agent
 
-from agents.ares import ares
+from agents.ares_workflow import ares
+from agents.impact_agent import impact_agent
 from agents.model_config import APOLLO_MODEL
 from agents.tools.event_tools import emit_event
 from agents.tools.memory_tools import (
@@ -58,9 +59,15 @@ ThreatReport dict in context.
 8. Call `emit_event` with type=AGENT_COMPLETED, agent=apollo, job_id=job_id,
    payload={"step": "complete"}.
 9. Call `emit_event` with type=HANDOFF, agent=apollo, job_id=job_id,
-   payload={"from": "apollo", "to": "ares"}.
-10. Transfer to `ares` — pass the formatted report, enrichment text, and the
-    original ThreatReport dict in your message so Ares can generate response plans.
+   payload={"from": "apollo", "to": "impact_agent", "protocol": "a2a"}.
+10. Transfer to `impact_agent` — pass the job_id, formatted report, enrichment text,
+    the original ThreatReport dict, and your IOC summary so the remote specialist can
+    assess continuity and outage impact.
+11. When `impact_agent` returns, call `emit_event` with type=HANDOFF, agent=apollo,
+    job_id=job_id, payload={"from": "impact_agent", "to": "ares"}.
+12. Transfer to `ares` — pass the job_id, formatted report, enrichment text, original
+    ThreatReport dict, and the impact analysis so the Ares workflow can assemble one
+    response with both cyber and operational guidance.
 
 ## Rules
 
@@ -215,5 +222,5 @@ apollo: Agent = Agent(
         synthesize_prior_runs,
         emit_event,
     ],
-    sub_agents=[ares],
+    sub_agents=[impact_agent, ares],
 )

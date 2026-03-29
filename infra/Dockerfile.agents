@@ -7,6 +7,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 COPY pyproject.toml uv.lock ./
 RUN uv sync --no-dev --frozen
 
+COPY adk_apps/ ./adk_apps/
 COPY agents/ ./agents/
 COPY sandbox/models.py ./sandbox/models.py
 COPY sandbox/__init__.py ./sandbox/__init__.py

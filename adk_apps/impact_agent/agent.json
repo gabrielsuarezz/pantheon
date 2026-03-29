@@ -1,0 +1,26 @@
+{
+  "capabilities": {},
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "description": "A remote specialist that converts confirmed cyber evidence into critical infrastructure continuity impact and operator actions.",
+  "name": "impact_agent",
+  "skills": [
+    {
+      "id": "critical_infrastructure_impact",
+      "name": "Critical Infrastructure Impact Analysis",
+      "description": "Assess continuity risk, outage implications, and urgent operator actions from confirmed malware evidence.",
+      "tags": [
+        "critical-infrastructure",
+        "continuity",
+        "impact",
+        "operations"
+      ]
+    }
+  ],
+  "url": "http://127.0.0.1:8001/a2a/impact_agent",
+  "version": "1.0.0"
+}

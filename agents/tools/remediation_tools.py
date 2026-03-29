@@ -14,6 +14,7 @@ from google.genai import types as genai_types
 
 from agents.tools.event_tools import emit_event
 from sandbox.models import AgentName, EventType
+
 _MODEL: str = "gemini-2.5-flash"
 
 _CONTAINMENT_PROMPT = """\
@@ -75,6 +76,19 @@ def _gemini_client() -> genai.Client:
     return genai.Client(api_key=api_key)
 
 
+def _workflow_payload(
+    *,
+    workflow: str | None,
+    branch: str | None,
+) -> dict[str, str]:
+    payload: dict[str, str] = {}
+    if workflow is not None:
+        payload["workflow"] = workflow
+    if branch is not None:
+        payload["branch"] = branch
+    return payload
+
+
 async def _generate(prompt: str) -> str:
     """Send *prompt* to Gemini and return the text response."""
     client = _gemini_client()
@@ -89,7 +103,12 @@ async def _generate(prompt: str) -> str:
     return response.text or "(no plan generated)"
 
 
-async def generate_containment_plan(threat_summary: str) -> str:
+async def generate_containment_plan(
+    threat_summary: str,
+    *,
+    workflow: str | None = None,
+    branch: str | None = None,
+) -> str:
     """Generate an immediate containment plan for the detected threat.
 
     Uses Gemini to produce numbered, urgency-labelled containment steps
@@ -109,19 +128,30 @@ async def generate_containment_plan(threat_summary: str) -> str:
         EventType.TOOL_CALLED,
         agent=AgentName.ARES,
         tool="generate_containment_plan",
-        payload={"summary_length": len(threat_summary)},
+        payload={
+            "summary_length": len(threat_summary),
+            **_workflow_payload(workflow=workflow, branch=branch),
+        },
     )
     result = await _generate(_CONTAINMENT_PROMPT.format(summary=threat_summary))
     await emit_event(
         EventType.TOOL_RESULT,
         agent=AgentName.ARES,
         tool="generate_containment_plan",
-        payload={"plan_length": len(result)},
+        payload={
+            "plan_length": len(result),
+            **_workflow_payload(workflow=workflow, branch=branch),
+        },
     )
     return result
 
 
-async def generate_remediation_plan(threat_summary: str) -> str:
+async def generate_remediation_plan(
+    threat_summary: str,
+    *,
+    workflow: str | None = None,
+    branch: str | None = None,
+) -> str:
     """Generate a full remediation plan to eradicate the malware.
 
     Uses Gemini to produce numbered steps covering file removal, registry
@@ -138,19 +168,30 @@ async def generate_remediation_plan(threat_summary: str) -> str:
         EventType.TOOL_CALLED,
         agent=AgentName.ARES,
         tool="generate_remediation_plan",
-        payload={"summary_length": len(threat_summary)},
+        payload={
+            "summary_length": len(threat_summary),
+            **_workflow_payload(workflow=workflow, branch=branch),
+        },
     )
     result = await _generate(_REMEDIATION_PROMPT.format(summary=threat_summary))
     await emit_event(
         EventType.TOOL_RESULT,
         agent=AgentName.ARES,
         tool="generate_remediation_plan",
-        payload={"plan_length": len(result)},
+        payload={
+            "plan_length": len(result),
+            **_workflow_payload(workflow=workflow, branch=branch),
+        },
     )
     return result
 
 
-async def generate_prevention_plan(threat_summary: str) -> str:
+async def generate_prevention_plan(
+    threat_summary: str,
+    *,
+    workflow: str | None = None,
+    branch: str | None = None,
+) -> str:
     """Generate a long-term prevention plan tailored to the threat class.
 
     Uses Gemini to produce recommendations including EDR tuning, detection
@@ -168,14 +209,20 @@ async def generate_prevention_plan(threat_summary: str) -> str:
         EventType.TOOL_CALLED,
         agent=AgentName.ARES,
         tool="generate_prevention_plan",
-        payload={"summary_length": len(threat_summary)},
+        payload={
+            "summary_length": len(threat_summary),
+            **_workflow_payload(workflow=workflow, branch=branch),
+        },
     )
     result = await _generate(_PREVENTION_PROMPT.format(summary=threat_summary))
     await emit_event(
         EventType.TOOL_RESULT,
         agent=AgentName.ARES,
         tool="generate_prevention_plan",
-        payload={"plan_length": len(result)},
+        payload={
+            "plan_length": len(result),
+            **_workflow_payload(workflow=workflow, branch=branch),
+        },
     )
     return result
 
@@ -186,6 +233,8 @@ def build_full_response(
     containment: str,
     remediation: str,
     prevention: str,
+    *,
+    impact_analysis: str = "",
 ) -> str:
     """Assemble the complete Pantheon incident response document.
 
@@ -210,19 +259,32 @@ def build_full_response(
         "## Threat Intelligence Enrichment",
         "",
         enrichment,
-        "---",
-        "## Containment Plan",
-        "",
-        containment,
-        "---",
-        "## Remediation Plan",
-        "",
-        remediation,
-        "---",
-        "## Prevention Recommendations",
-        "",
-        prevention,
     ]
+    if impact_analysis:
+        sections.extend(
+            [
+                "---",
+                "## Critical Infrastructure Impact",
+                "",
+                impact_analysis,
+            ]
+        )
+    sections.extend(
+        [
+            "---",
+            "## Containment Plan",
+            "",
+            containment,
+            "---",
+            "## Remediation Plan",
+            "",
+            remediation,
+            "---",
+            "## Prevention Recommendations",
+            "",
+            prevention,
+        ]
+    )
     return "\n".join(sections)
 
 

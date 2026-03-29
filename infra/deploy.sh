@@ -162,6 +162,21 @@ if [[ "$SET_WEBHOOK" == "true" ]]; then
   log "Telegram webhook response: $response"
 fi
 
+log "Waiting for ADK agents service..."
+adk_start="$(date +%s)"
+while true; do
+  if curl -fsS http://localhost:8001/list-apps >/dev/null 2>&1; then
+    log "ADK agents service is healthy."
+    break
+  fi
+  now="$(date +%s)"
+  if (( now - adk_start >= 60 )); then
+    log "WARNING: ADK agents service did not start within 60s — continuing."
+    break
+  fi
+  sleep 2
+done
+
 log "Deployment complete. Service status:"
 "${COMPOSE[@]}" ps
 
