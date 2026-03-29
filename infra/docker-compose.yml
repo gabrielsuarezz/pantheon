@@ -13,7 +13,7 @@ services:
       - PANTHEON_DB_PATH=/app/data/pantheon.db
       - SANDBOX_API_URL=http://sandbox:9000
     networks:
-      - internal
+      - pantheon
     env_file: ../.env
     restart: unless-stopped
 
@@ -26,8 +26,7 @@ services:
     ports:
       - "3000:3000"
     networks:
-      - internal
-      - public
+      - pantheon
     restart: unless-stopped
 
   nginx:
@@ -40,16 +39,13 @@ services:
       - sandbox
       - frontend
     networks:
-      - internal
-      - public
+      - pantheon
     restart: unless-stopped
 
 volumes:
   samples:
-  db:      # persists pantheon.db across sandbox container restarts
+  db:
 
 networks:
-  internal:
-    driver: bridge
-  public:
+  pantheon:
     driver: bridge
