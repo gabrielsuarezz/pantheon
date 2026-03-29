@@ -9,6 +9,7 @@ Hephaestus is the FastAPI service that powers malware analysis, persistence, age
 - Persist reports, IOCs, and agent memory in SQLite (WAL mode)
 - Provide behavioral fingerprinting and cross-run similarity search (KnowledgeStore)
 - Broadcast real-time events to dashboard clients over WebSocket (EventBus)
+- Optionally mirror events to Kafka (`PANTHEON_STREAM_BACKEND=kafka`) for replay/analytics
 
 ## Key Files
 
@@ -16,6 +17,7 @@ Hephaestus is the FastAPI service that powers malware analysis, persistence, age
 - `analyzer.py`: analysis orchestration, job management, persistence logic, and KnowledgeStore
 - `models.py`: Pydantic v2 API contract — **single source of truth** for all inter-service data shapes
 - `events.py`: in-memory EventBus singleton — asyncio pub/sub with WebSocket broadcast
+- `streaming.py`: optional stream replicator (default `none`, optional `kafka`)
 - `static/`: static analysis components (string extraction, AST deobfuscation, entropy scanning)
 - `dynamic/`: containerized dynamic analysis harness (Docker SDK, Node.js instrumentation)
 

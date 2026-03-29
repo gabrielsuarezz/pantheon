@@ -180,7 +180,7 @@ const GodNode = ({ data }: NodeProps<Node<GodNodeData, 'god'>>) => {
 
       {/* Label */}
       <div
-        className="mt-2 text-[10px] font-bold uppercase tracking-widest text-center transition-colors duration-300"
+        className="mt-2.5 text-[12px] font-bold uppercase tracking-[0.16em] text-center transition-colors duration-300"
         style={{ color: isActive ? meta.color : '#9A7A10', opacity: isActive ? 1 : 0.7 }}
       >
         {meta.label}
@@ -195,10 +195,10 @@ const GodNode = ({ data }: NodeProps<Node<GodNodeData, 'god'>>) => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
-            className="mt-1 text-[9px] italic text-center leading-tight"
+            className="mt-1.5 text-[11px] italic text-center leading-snug"
             style={{
               color: '#5a4e30',
-              maxWidth: 120,
+              maxWidth: 170,
               overflow: 'hidden',
               display: '-webkit-box',
               WebkitLineClamp: 2,

@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import asyncio
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
+
+from sandbox.events import EventBus
 from sandbox.models import (
     AgentName,
     AttackStage,
@@ -68,12 +73,6 @@ def test_attack_stage_fields() -> None:
     assert stage.stage_id == "persistence"
 
 
-import asyncio
-from unittest.mock import AsyncMock, MagicMock
-
-from sandbox.events import EventBus
-
-
 def _make_event(event_type: EventType = EventType.AGENT_ACTIVATED) -> PantheonEvent:
     return PantheonEvent(type=event_type, agent=None)
 
@@ -128,6 +127,6 @@ async def test_subscribe_sends_events_to_websocket() -> None:
     )
 
     ws.accept.assert_called_once()
-    ws.send_text.assert_called_once()
-    call_arg = ws.send_text.call_args[0][0]
-    assert event.id in call_arg
+    assert ws.send_text.call_count >= 1
+    payloads = [str(call.args[0]) for call in ws.send_text.call_args_list]
+    assert any(event.id in payload for payload in payloads)

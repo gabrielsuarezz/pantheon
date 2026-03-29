@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 
 import docker
@@ -29,6 +29,7 @@ from sandbox.models import (
     StoreMemoryResponse,
     ThreatReport,
 )
+from sandbox.streaming import replicator
 
 logging.basicConfig(
     level=logging.INFO,
@@ -64,13 +65,13 @@ def _emit_telemetry(
     }
     if command:
         payload["command"] = command
-    bus.publish(
-        PantheonEvent(
-            type=EventType.TELEMETRY,
-            agent=AgentName.HEPHAESTUS,
-            payload=payload,
-        )
+    event = PantheonEvent(
+        type=EventType.TELEMETRY,
+        agent=AgentName.HEPHAESTUS,
+        payload=payload,
     )
+    bus.publish(event)
+    replicator.enqueue(event)
 
 
 class _EventBusLogHandler(logging.Handler):
@@ -105,11 +106,12 @@ def _install_log_streaming() -> None:
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     from agents.artemis import Artemis
     from agents.worker import _on_new_sample, swarm_worker_loop
 
     _install_log_streaming()
+    await replicator.start()
     _emit_telemetry("Hephaestus boot complete", command="uvicorn sandbox.main:app")
 
     artemis_daemon = Artemis(on_new_sample=_on_new_sample)
@@ -123,6 +125,7 @@ async def lifespan(app: FastAPI):
     # Cancel tasks on shutdown
     artemis_task.cancel()
     worker_task.cancel()
+    await replicator.stop()
 
 app = FastAPI(
     title="Hephaestus",
@@ -264,11 +267,16 @@ async def receive_event(event: PantheonEvent) -> None:
 
     if event.type != EventType.TELEMETRY:
         _emit_telemetry(
-            f"EVENT {event.type.value} agent={event.agent.value if event.agent else 'unknown'} tool={event.tool or '-'}",
+            (
+                f"EVENT {event.type.value} "
+                f"agent={event.agent.value if event.agent else 'unknown'} "
+                f"tool={event.tool or '-'}"
+            ),
             command="POST /events",
             stream="stdout",
         )
     bus.publish(event)
+    replicator.enqueue(event)
 
 
 @app.post("/sandbox/agents/{agent_name}/command", status_code=204)
@@ -281,4 +289,5 @@ async def agent_command(agent_name: AgentName, command: str, job_id: str | None 
         payload={"command": command},
     )
     bus.publish(event)
+    replicator.enqueue(event)
     logger.info("Control command '%s' sent to agent %s", command, agent_name)

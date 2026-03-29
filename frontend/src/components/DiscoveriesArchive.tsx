@@ -11,10 +11,19 @@ const TOTAL_REVEAL_MS = 100_000;
 type FetchState = 'loading' | 'ready' | 'error';
 
 function splitIntoChunks(markdown: string): string[] {
-  return markdown
+  const chunks = markdown
     .split(/\n\s*\n/)
     .map((part) => part.trim())
     .filter((part) => part.length > 0);
+
+  const executiveSummaryChunks = chunks.filter((part) =>
+    /(^|\n)#{1,6}\s*Executive Summary\b/i.test(part),
+  );
+  const nonExecutiveChunks = chunks.filter(
+    (part) => !/(^|\n)#{1,6}\s*Executive Summary\b/i.test(part),
+  );
+
+  return [...nonExecutiveChunks, ...executiveSummaryChunks];
 }
 
 interface DiscoveriesArchiveProps {

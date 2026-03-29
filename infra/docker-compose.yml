@@ -16,6 +16,9 @@ services:
     environment:
       - PANTHEON_DB_PATH=/app/data/pantheon.db
       - SANDBOX_API_URL=http://sandbox:9000
+      - PANTHEON_STREAM_BACKEND=${PANTHEON_STREAM_BACKEND:-none}
+      - PANTHEON_KAFKA_BOOTSTRAP_SERVERS=${PANTHEON_KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      - PANTHEON_KAFKA_TOPIC=${PANTHEON_KAFKA_TOPIC:-pantheon.events}
     networks:
       - pantheon
     env_file: ../.env
@@ -43,6 +46,26 @@ services:
     depends_on:
       - sandbox
       - frontend
+    networks:
+      - pantheon
+    restart: unless-stopped
+
+  kafka:
+    image: redpandadata/redpanda:v24.1.9
+    profiles: ["kafka"]
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp=1
+      - --memory=512M
+      - --reserve-memory=0M
+      - --node-id=0
+      - --check=false
+      - --kafka-addr=PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr=PLAINTEXT://kafka:9092
+    ports:
+      - "9092:9092"
     networks:
       - pantheon
     restart: unless-stopped

@@ -19,6 +19,7 @@ dependencies = [
     "paramiko>=4.0.0",
     "litellm>=1.75.5",
     "openai>=1.0.0",
+    "aiokafka>=0.12.0",
 ]
 
 [build-system]

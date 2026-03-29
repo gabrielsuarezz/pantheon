@@ -2,11 +2,11 @@
 
 The AI incident-response team you wish was awake at 2AM.
 
-Pantheon is an AI-driven malware analysis and incident response platform built for HackUSF 2026. Submit a sample through Telegram or voice, and a coordinated team of specialized agents will triage, detonate, extract IOCs, assess impact, and produce an actionable response plan. While it runs, every handoff and tool execution streams live to a real-time dashboard.
+Pantheon is an AI-driven malware analysis and incident response platform built for HackUSF 2026. Submit a sample through Telegram or voice, and a coordinated team of specialized agents will triage, detonate, extract IOCs, assess impact, and produce an actionable response plan. While it runs, every handoff and tool execution streams live to a real-time dashboard and Kafka for durable event replay.
 
 Pantheon is designed for demo pressure and production-minded constraints:
 - Real multi-agent orchestration with Google ADK
-- Event-driven observability (WebSocket + structured telemetry)
+- Event-driven observability (WebSocket + structured telemetry + Kafka event streaming)
 - Isolated malware detonation in hardened Docker and Windows VPS tooling
 - Voice-first and chat-first operator experience through Hermes + Muse
 - Actionable outputs: containment, remediation, prevention, and detection content
@@ -37,7 +37,7 @@ A user submits a sample (file upload, text, or voice message) through Telegram �
 | Analysis     | Hades      | Docker sandbox + Windows VPS detonation, Procmon/Wireshark/FakeNet tools    |
 | Intelligence | Apollo     | Extracts IOCs, enriches with Gemini threat intel, synthesizes prior runs    |
 | Response     | Ares       | Generates containment, remediation, and prevention plan with YARA/Sigma     |
-| Sandbox      | Hephaestus | FastAPI service, Docker container lifecycle, EventBus, WebSocket stream     |
+| Sandbox      | Hephaestus | FastAPI service, Docker container lifecycle, EventBus, WebSocket stream + Kafka mirror |
 | Sentinel     | Artemis    | Background daemon — auto-triggers pipeline on new samples                   |
 | Voice        | Muse       | ElevenLabs Conversational AI — STT, TTS, and live voice call tools          |
 | Impact       | —          | Remote A2A specialist — critical infrastructure continuity assessment       |
@@ -146,11 +146,15 @@ flowchart TB
         EVENTBUS["📡 EventBus\nasyncio pub/sub\nWebSocket broadcast\nPantheonEvent serialization"]
         WS_STREAM["🔌 /ws Endpoint\nreal-time event stream\nauto-reconnect clients"]
         EVENTS_IN["📥 POST /events\nagent → EventBus ingest\nfire-and-forget delivery"]
+        STREAM_MIRROR["🪞 Stream Replicator\nKafka producer\nfire-and-forget mirror"]
+        KAFKA_TOPIC["🧵 Kafka Topic\npantheon.events\ndurable replay log"]
 
         FASTAPI --> ANALYZER
         ANALYZER --> KNOWLEDGE
         EVENTS_IN --> EVENTBUS
         EVENTBUS --> WS_STREAM
+        EVENTBUS -. "mirror" .-> STREAM_MIRROR
+        STREAM_MIRROR --> KAFKA_TOPIC
     end
 
     subgraph DOCKER_ENV["🐋 Docker Isolation — Detonation Chamber"]
@@ -188,9 +192,11 @@ flowchart TB
         EVT_TYPES["Event Types:\n• AGENT_ACTIVATED\n• AGENT_COMPLETED\n• TOOL_CALLED\n• TOOL_RESULT\n• HANDOFF\n• IOC_DISCOVERED\n• STAGE_UNLOCKED\n• PROCESS_EVENT\n• NETWORK_EVENT\n• AGENT_COMMAND"]
         EVT_EMIT["emit_event()\nfire-and-forget\nhttpx POST /events\nnon-blocking async"]
         EVT_FLOW["Agent → POST /events\n→ EventBus.publish()\n→ asyncio.Queue per client\n→ WebSocket broadcast\n→ Dashboard EventStore"]
+        EVT_KAFKA["Kafka fork:\nEventBus → Stream Replicator\n→ Kafka topic pantheon.events\n→ replay / downstream SIEM"]
 
         EVT_TYPES --- EVT_EMIT
         EVT_EMIT --- EVT_FLOW
+        EVT_FLOW --> EVT_KAFKA
     end
 
     ATHENA & HADES & APOLLO & ARES_A -. "emit_event()" .-> EVENTS_IN
@@ -250,7 +256,7 @@ flowchart TB
     class ZEUS,HERMES,ATHENA,HADES,APOLLO,ARES_C,ARES_R,ARES_P,ARES_A god
     class HARNESS,STATIC_A,DYNAMIC_A,PROCMON,FAKENET,WIRESHARK tool
     class VULTR,NGINX,COMPOSE,SENTINEL,FASTAPI,ANALYZER,KNOWLEDGE infra
-    class EVENTBUS,WS_STREAM,EVENTS_IN,EVT_TYPES,EVT_EMIT,EVT_FLOW event
+    class EVENTBUS,WS_STREAM,EVENTS_IN,STREAM_MIRROR,KAFKA_TOPIC,EVT_TYPES,EVT_EMIT,EVT_FLOW,EVT_KAFKA event
     class TG,VC,DASH,WS_CLIENT,STORE,GRAPH,CHRONICLE,CHAIN,INSPECTOR,TRACE ui
     class CONTAINER danger
 ```
@@ -287,6 +293,7 @@ For full safety policy and sanctioned execution paths, see CLAUDE.md.
 - [python-telegram-bot](https://python-telegram-bot.org/) — Telegram interface
 - [ElevenLabs](https://elevenlabs.io/) — TTS, STT, and Conversational AI (voice calls)
 - FastAPI + uvicorn — Hephaestus sandbox service + WebSocket event stream
+- aiokafka — Kafka mirror for PantheonEvent durability/replay
 - Docker SDK for Python — container lifecycle
 - SQLite (stdlib, WAL mode) — job persistence + KnowledgeStore agent memory
 - Pydantic v2 — all data models, strict typing throughout
@@ -339,6 +346,9 @@ Deploy the full stack (sandbox + frontend + nginx):
 ```bash
 docker compose -f infra/docker-compose.yml up -d --build
 docker compose -f infra/docker-compose.yml ps
+
+# Start with Kafka stream services
+PANTHEON_STREAM_BACKEND=kafka docker compose -f infra/docker-compose.yml --profile kafka up -d
 ```
 
 Default routes:
@@ -364,6 +374,10 @@ See .env.example for baseline values. Key variables used by the current runtime:
 | `WEBAPP_BASE_URL`         | Public base URL used for Telegram Mini App + webhook routing            |
 | `SANDBOX_API_URL`         | Internal URL of the Hephaestus service (default: `http://sandbox:9000`) |
 | `NEXT_PUBLIC_SANDBOX_URL` | Frontend dashboard sandbox URL (set in frontend/.env.local)             |
+| `PANTHEON_STREAM_BACKEND` | Event stream backend (`kafka` for full architecture lane)                 |
+| `PANTHEON_KAFKA_BOOTSTRAP_SERVERS` | Kafka bootstrap servers for stream mirror (for example `kafka:9092`) |
+| `PANTHEON_KAFKA_TOPIC`    | Kafka topic for mirrored `PantheonEvent` records                         |
+| `PANTHEON_KAFKA_CLIENT_ID`| Kafka producer client id for Hephaestus                                  |
 | `WINDOWS_VPS_IP`          | IP of the Windows VPS for live detonation (if enabled)                  |
 | `WINDOWS_VPS_USER`        | Windows VPS username (if enabled)                                       |
 | `WINDOWS_VPS_PASSWORD`    | Windows VPS password (if enabled)                                       |
