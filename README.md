@@ -25,6 +25,205 @@ All voice interaction is handled by the Muse module via ElevenLabs. Agent memory
 
 ---
 
+## Architecture
+
+```mermaid
+flowchart TB
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    %% LAYER 0 — USER INTERFACE
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    subgraph UI["🌐 User Interface Layer"]
+        direction LR
+        TG["📱 Telegram Client"]
+        VC["🎙️ Voice Call — Mini App"]
+        DASH["📊 Next.js Dashboard"]
+        TG -- "file upload / text / voice" --> HERMES
+        VC -- "ElevenLabs WebSocket" --> MUSE
+        DASH -- "ws://sandbox:9000/ws" --> WS_STREAM
+    end
+
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    %% LAYER 1 — GATEWAY + VOICE
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    subgraph GW["⚡ Hermes — Telegram Gateway + Voice I/O"]
+        direction TB
+        HERMES["🏛️ Hermes Bot\n— python-telegram-bot —\ntext · voice · file routing"]
+        MUSE["🎵 Muse Voice Module\n— ElevenLabs Conversational AI —\nSTT → LLM → TTS"]
+        SESSION["🔐 Session Manager\nuser_id → ADK session_id"]
+        HERMES --> SESSION
+        MUSE --> SESSION
+    end
+
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    %% LAYER 2 — ORCHESTRATION
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    subgraph ORCH["⚜️ Zeus — Root Orchestrator"]
+        direction TB
+        ZEUS["🏛️ Zeus Agent\n— Google ADK LlmAgent —\nGemini 2.5 Flash\nroutes · compiles · delegates"]
+        RUNNER["🔄 ADK Runner\nInMemorySessionService\nstate_delta propagation"]
+        SWARM["🐝 SwarmManager\njob queue · status FSM\nqueued → running → done"]
+        ZEUS --> RUNNER
+        RUNNER --> SWARM
+    end
+
+    SESSION -- "ADK session handoff" --> ZEUS
+
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    %% LAYER 3 — ANALYSIS PIPELINE (A2A TRANSFERS)
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    subgraph PIPELINE["🔱 Agent Analysis Pipeline — A2A Protocol"]
+        direction LR
+
+        subgraph TRIAGE["Phase 1 — Triage"]
+            ATHENA["🦉 Athena\nseverity classification\nincident ticket creation\nrouting decision"]
+        end
+
+        subgraph DYNAMIC["Phase 2 — Deep Analysis"]
+            HADES["💀 Hades\nDocker sandbox detonation\nWindows VPS Procmon capture\nFakeNet-NG · Wireshark\nbehavioral fingerprinting"]
+        end
+
+        subgraph INTEL["Phase 3 — Intelligence"]
+            APOLLO["☀️ Apollo\nIOC extraction & enrichment\nGemini threat intel correlation\nprior-run synthesis\nformatted ThreatReport"]
+        end
+
+        subgraph RESPONSE["Phase 4 — Response"]
+            ARES_C["🗡️ Ares::Containment\nnetwork isolation\nprocess termination\nfirewall rules"]
+            ARES_R["🛡️ Ares::Remediation\nfile cleanup\nregistry repair\ncredential rotation"]
+            ARES_P["🏰 Ares::Prevention\nYARA rules\nSigma detection\nGPO hardening\nEDR tuning"]
+            ARES_A["📋 Ares::Assembler\nfull incident report\nmarkdown compilation"]
+        end
+
+        ATHENA -- "A2A transfer\nINC ticket + severity" --> HADES
+        HADES -- "A2A transfer\nThreatReport + IOCs" --> APOLLO
+        APOLLO -- "A2A transfer\nenriched report + intel" --> ARES_C & ARES_R & ARES_P
+        ARES_C & ARES_R & ARES_P -- "parallel merge" --> ARES_A
+    end
+
+    ZEUS -- "sub_agent dispatch" --> ATHENA
+    ARES_A -- "final report" --> ZEUS
+
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    %% LAYER 4 — SANDBOX & DETONATION INFRASTRUCTURE
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    subgraph SANDBOX["🔥 Hephaestus — Sandbox Service"]
+        direction TB
+        FASTAPI["⚙️ FastAPI Server\nPOST /sandbox/analyze\nGET /sandbox/report/:id\nGET /sandbox/iocs/:id"]
+        ANALYZER["🔬 Analyzer Engine\nstatic analysis pipeline\ndynamic harness execution\njob lifecycle management"]
+        KNOWLEDGE["🧠 KnowledgeStore\nSQLite WAL mode\nagent memory persistence\nbehavioral fingerprints\ncross-run similarity search"]
+        EVENTBUS["📡 EventBus\nasyncio pub/sub\nWebSocket broadcast\nPantheonEvent serialization"]
+        WS_STREAM["🔌 /ws Endpoint\nreal-time event stream\nauto-reconnect clients"]
+        EVENTS_IN["📥 POST /events\nagent → EventBus ingest\nfire-and-forget delivery"]
+
+        FASTAPI --> ANALYZER
+        ANALYZER --> KNOWLEDGE
+        EVENTS_IN --> EVENTBUS
+        EVENTBUS --> WS_STREAM
+    end
+
+    subgraph DOCKER_ENV["🐋 Docker Isolation — Detonation Chamber"]
+        direction TB
+        CONTAINER["📦 Analysis Container\n--network none\n--memory 256m\n--read-only\n--no-new-privileges\n--cap-drop ALL"]
+        HARNESS["🔧 Node.js Harness\nWScript.Shell mock\nActiveXObject intercept\nXMLHTTP capture\neval/exec logging"]
+        STATIC_A["📝 Static Analysis\nstring extraction\nAST deobfuscation\nentropy scanning"]
+        DYNAMIC_A["💣 Dynamic Analysis\nprocess tree capture\nregistry modification log\nfile system diff\nnetwork call intercept"]
+
+        CONTAINER --> HARNESS
+        HARNESS --> STATIC_A & DYNAMIC_A
+    end
+
+    subgraph VPS["🖥️ Windows VPS — Live Detonation"]
+        direction TB
+        PROCMON["📊 Procmon\nprocess creation\nfile I/O\nregistry mutations\nthread injection"]
+        FAKENET["🌐 FakeNet-NG\nDNS interception\nHTTP/HTTPS capture\nC2 beacon detection\nprotocol simulation"]
+        WIRESHARK["🦈 Wireshark\nfull packet capture\nTLS fingerprinting\nJA3/JA3S hashing\nbeacon interval analysis"]
+        SNAP["📸 VM Snapshot\npre-detonation state\nauto-restore on complete\nisolated VLAN"]
+
+        PROCMON --> SNAP
+        FAKENET --> SNAP
+        WIRESHARK --> SNAP
+    end
+
+    HADES -- "submit_sample()" --> FASTAPI
+    HADES -- "SSH/SFTP\nparamiko" --> PROCMON & FAKENET & WIRESHARK
+    ANALYZER -- "Docker SDK\ncontainer.run()" --> CONTAINER
+
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    %% LAYER 5 — EVENT SYSTEM (TELEMETRY BACKBONE)
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    subgraph EVENTS["📡 Real-Time Event System — PantheonEvent Protocol"]
+        direction LR
+        EVT_TYPES["Event Types:\n• AGENT_ACTIVATED\n• AGENT_COMPLETED\n• TOOL_CALLED\n• TOOL_RESULT\n• HANDOFF\n• IOC_DISCOVERED\n• STAGE_UNLOCKED\n• PROCESS_EVENT\n• NETWORK_EVENT\n• AGENT_COMMAND"]
+        EVT_EMIT["emit_event()\nfire-and-forget\nhttpx POST /events\nnon-blocking async"]
+        EVT_FLOW["Agent → POST /events\n→ EventBus.publish()\n→ asyncio.Queue per client\n→ WebSocket broadcast\n→ Dashboard EventStore"]
+
+        EVT_TYPES --- EVT_EMIT
+        EVT_EMIT --- EVT_FLOW
+    end
+
+    ATHENA & HADES & APOLLO & ARES_A -. "emit_event()" .-> EVENTS_IN
+
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    %% LAYER 6 — DASHBOARD FRONTEND
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    subgraph FRONTEND["📊 Live Dashboard — React + React Flow"]
+        direction TB
+        WS_CLIENT["🔌 pantheon-ws.ts\nWebSocket client\nauto-reconnect\nevent deserialization"]
+        STORE["🗄️ EventStore\nZustand-style state\nagent status tracking\nevent feed buffer\nIOC accumulator"]
+        GRAPH["🕸️ OlympusFlow\nReact Flow canvas\n8 agent nodes\npulse on active\nedge animation on handoff"]
+        CHRONICLE["📜 DivineChronicle\nevent feed — auto-scroll\ncolor-coded by severity\nexpandable tool calls"]
+        CHAIN["⛓️ AttackChain\nhorizontal stage cards\nfade-in on STAGE_UNLOCKED\nreal-time progression"]
+        INSPECTOR["🔍 AgentInspector\nper-agent telemetry\ntool call history\nlatency metrics"]
+        TRACE["🎬 TraceViewer\nplayback timeline\nParallelAgent visualization\nLoopAgent iteration render"]
+
+        WS_CLIENT --> STORE
+        STORE --> GRAPH & CHRONICLE & CHAIN & INSPECTOR & TRACE
+    end
+
+    WS_STREAM -- "PantheonEvent JSON stream" --> WS_CLIENT
+
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    %% LAYER 7 — INFRASTRUCTURE
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    subgraph INFRA["🏗️ Deployment Infrastructure"]
+        direction LR
+        VULTR["☁️ Vultr VPS\nUbuntu 22.04\n155.138.218.106"]
+        NGINX["🔀 nginx reverse proxy\n:80 → routing\n/ws → sandbox:9000\n/dashboard → frontend:3000\n/sandbox/* → sandbox:9000"]
+        COMPOSE["🐳 Docker Compose\n3 services\nsingle bridge network\nvolume persistence"]
+        SENTINEL["👁️ Artemis Daemon\nwatchdog file scanner\n/tmp/samples monitor\nauto-pipeline trigger"]
+
+        VULTR --> NGINX
+        NGINX --> COMPOSE
+        COMPOSE --> SENTINEL
+    end
+
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    %% CROSS-LAYER CONNECTIONS
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    SENTINEL -. "new sample detected" .-> SWARM
+    SWARM -. "job dispatch" .-> ZEUS
+    ZEUS -- "voice briefing" --> MUSE
+    MUSE -- "TTS response" --> TG
+
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    %% STYLING
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    classDef god fill:#1a1a2e,stroke:#c9a227,stroke-width:2px,color:#e8d5a3,font-weight:bold
+    classDef tool fill:#16213e,stroke:#537ec5,stroke-width:1px,color:#c5cae9
+    classDef infra fill:#0f3460,stroke:#e94560,stroke-width:1px,color:#f5f5f5
+    classDef event fill:#2d132c,stroke:#ee4540,stroke-width:2px,color:#f5c7c7
+    classDef ui fill:#1b262c,stroke:#bbe1fa,stroke-width:1px,color:#bbe1fa
+    classDef danger fill:#3d0000,stroke:#ff0000,stroke-width:3px,color:#ff6b6b
+
+    class ZEUS,HERMES,ATHENA,HADES,APOLLO,ARES_C,ARES_R,ARES_P,ARES_A god
+    class HARNESS,STATIC_A,DYNAMIC_A,PROCMON,FAKENET,WIRESHARK tool
+    class VULTR,NGINX,COMPOSE,SENTINEL,FASTAPI,ANALYZER,KNOWLEDGE infra
+    class EVENTBUS,WS_STREAM,EVENTS_IN,EVT_TYPES,EVT_EMIT,EVT_FLOW event
+    class TG,VC,DASH,WS_CLIENT,STORE,GRAPH,CHRONICLE,CHAIN,INSPECTOR,TRACE ui
+    class CONTAINER danger
+```
+
+---
+
 ## Safety
 
 **The malware sample (`6108674530.JS.malicious`) must never be executed directly on any machine.**
