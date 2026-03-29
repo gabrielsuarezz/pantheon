@@ -35,7 +35,7 @@ export default function IOCPanel({ store }: { store: EventStore }) {
   };
 
   return (
-    <div className="glass-panel rounded-2xl p-6 border-gold/10 space-y-6">
+    <div className="p-5 space-y-5">
       <h3 className="text-[10px] font-bold uppercase tracking-widest text-gold-dark/60">
         Indicators of Compromise
       </h3>
@@ -70,9 +70,9 @@ export default function IOCPanel({ store }: { store: EventStore }) {
       </div>
 
       {/* IOC List */}
-      <div className="space-y-2 max-h-64 overflow-y-auto pr-2 scrollbar-hide">
+      <div className="space-y-2 overflow-y-auto pr-2 scrollbar-hide">
         {iocs.length === 0 ? (
-          <p className="text-xs text-gold-dark/40 italic">No artifacts discovered yet...</p>
+          <p className="text-xs text-gold-dark/40 italic">No indicators discovered yet</p>
         ) : (
           iocs.map((ioc, idx) => {
             const config = severityConfig[ioc.severity as keyof typeof severityConfig];
@@ -81,7 +81,7 @@ export default function IOCPanel({ store }: { store: EventStore }) {
             return (
               <div key={`${ioc.value}-${idx}`} className={`border rounded-xl p-3 bg-white/60 shadow-sm ${config.color}`}>
                 <div className="flex items-start gap-3">
-                  <div className={`p-1.5 rounded-lg bg-white shadow-sm`}>
+                  <div className="p-1.5 rounded-lg bg-white shadow-sm">
                     <Icon className="w-3.5 h-3.5" />
                   </div>
                   <div className="min-w-0 flex-1">
