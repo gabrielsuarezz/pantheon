@@ -23,9 +23,10 @@ async def _on_new_sample(path: Path) -> None:
     swarm = await get_swarm()
     job_id = await swarm.ingest_sample(path)
 
-    # Broadcast that Hephaestus/Swarm is active and ingesting
+    # Broadcast that Artemis detected a new sample.
     await emit_event(
-        event_type=EventType.AGENT_ACTIVATED,
+        event_type=EventType.AGENT_ACTIVATED.value,
+        agent=AgentName.ARTEMIS.value,
         job_id=job_id,
         payload={"message": f"Artemis detected new sample: {path.name}"},
     )

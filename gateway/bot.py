@@ -132,7 +132,7 @@ async def _send_with_typing(
             emit_event(
                 EventType.AGENT_ACTIVATED.value,
                 agent=AgentName.HERMES.value,
-                payload=f"telegram_prompt:{prompt[:120]}",
+                payload={"step": f"telegram_prompt:{prompt[:120]}"},
             )
         )
         # Emit handoff from Hermes → Zeus so the dashboard shows the transfer.
@@ -140,7 +140,7 @@ async def _send_with_typing(
             emit_event(
                 EventType.HANDOFF.value,
                 agent=AgentName.HERMES.value,
-                payload=f"from:hermes,to:zeus",
+                payload={"from": "hermes", "to": "zeus"},
             )
         )
 

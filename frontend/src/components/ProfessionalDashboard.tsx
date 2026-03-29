@@ -32,6 +32,18 @@ export default function ProfessionalDashboard() {
   const [showEvents, setShowEvents]       = useState(false);
   const [showIOCs, setShowIOCs]           = useState(false);
 
+  // WebSocket connection — runs once per store instance, never on agent selection.
+  useEffect(() => {
+    const sandboxUrl = process.env.NEXT_PUBLIC_SANDBOX_URL || 'http://localhost:9000';
+    const ws = initWS(sandboxUrl, store);
+    ws.connect()
+      .then(() => setConnected(true))
+      .catch(() => setConnected(false));
+    return () => { ws.close(); };
+  }, [store]);
+
+  // Store subscription — re-subscribes when selectedAgent changes so the
+  // closure always holds the latest value for the inspector auto-update.
   useEffect(() => {
     const unsubscribe = store.subscribe(() => {
       setStats(store.getStatistics());
@@ -40,14 +52,7 @@ export default function ProfessionalDashboard() {
         if (updated) setSelectedAgent(updated);
       }
     });
-
-    const sandboxUrl = process.env.NEXT_PUBLIC_SANDBOX_URL || 'http://localhost:9000';
-    const ws = initWS(sandboxUrl, store);
-    ws.connect()
-      .then(() => setConnected(true))
-      .catch(() => setConnected(false));
-
-    return () => { unsubscribe(); ws.close(); };
+    return unsubscribe;
   }, [store, selectedAgent]);
 
   const handleSelectAgent = (agent: AgentStatus) => {
