@@ -1,16 +1,17 @@
 'use client';
 
-import React, { useMemo, useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import {
   ReactFlow,
   useNodesState,
   useEdgesState,
-  MarkerType,
   Background,
   Controls,
   Node,
   Edge,
   Panel,
+  EdgeProps,
+  getBezierPath,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -166,6 +167,59 @@ const nodeTypes = {
   god: GodNode,
 };
 
+function ParticleEdge({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  data,
+}: EdgeProps) {
+  const [edgePath] = getBezierPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition });
+  const isActive = data?.active as boolean;
+  const color    = (data?.color as string) ?? 'rgba(201,162,39,0.4)';
+  const pathId   = `pp-${id}`;
+
+  return (
+    <g>
+      <defs>
+        <path id={pathId} d={edgePath} />
+      </defs>
+
+      {/* Base / active edge path */}
+      <path
+        d={edgePath}
+        fill="none"
+        stroke={isActive ? color : 'rgba(201,162,39,0.12)'}
+        strokeWidth={isActive ? 2 : 1}
+        strokeDasharray={isActive ? undefined : '4 6'}
+        opacity={isActive ? 0.75 : 1}
+        style={{ transition: 'stroke 0.3s, opacity 0.3s' }}
+      />
+
+      {/* Particles — 4 dots staggered along the path */}
+      {isActive && [0, 0.2, 0.4, 0.6].map((beginOffset, i) => (
+        <circle key={i} r={3} fill={color} opacity={0.85}>
+          <animateMotion
+            dur="0.9s"
+            begin={`${beginOffset}s`}
+            repeatCount="indefinite"
+            rotate="auto"
+          >
+            <mpath href={`#${pathId}`} />
+          </animateMotion>
+        </circle>
+      ))}
+    </g>
+  );
+}
+
+const edgeTypes = {
+  particle: ParticleEdge,
+};
+
 // ─── Main Component ─────────────────────────────────────────────────────────
 
 export default function OlympusFlow({ store, onSelect }: { store: EventStore, onSelect: (agent: AgentStatus) => void }) {
@@ -194,31 +248,45 @@ export default function OlympusFlow({ store, onSelect }: { store: EventStore, on
       }));
       setNodes(newNodes);
 
-      // Simple handoff edges
-      const handoffs = store.getHandoffs();
-      const newEdges: Edge[] = handoffs.map((h, i) => ({
-        id: `handoff-${i}`,
-        source: h.from,
-        target: h.to,
-        animated: true,
-        style: { stroke: AGENT_META[h.from as AgentName].color, strokeWidth: 2 },
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          color: AGENT_META[h.from as AgentName].color,
-        },
-      }));
-      
-      // Also add fallback edges from Zeus (the orchestrator) if no handoffs
-      if (newEdges.length === 0) {
-        AGENT_ORDER.forEach(name => {
+      const recentHandoffs = store.getHandoffs().filter((h) => {
+        const age = Date.now() - new Date(h.timestamp).getTime();
+        return age < 1200;
+      });
+
+      const newEdges: Edge[] = AGENT_ORDER.map((name) => {
+        const handoffKey = `zeus->${name}`;
+        const reverseKey = `${name}->zeus`;
+        const activeHandoff = recentHandoffs.find(
+          (h) => `${h.from}->${h.to}` === handoffKey || `${h.from}->${h.to}` === reverseKey
+        );
+        const isActive = !!activeHandoff;
+
+        return {
+          id: `edge-${name}`,
+          source: isActive && activeHandoff!.from !== 'zeus' ? name : 'zeus',
+          target: isActive && activeHandoff!.from !== 'zeus' ? 'zeus' : name,
+          type: 'particle',
+          data: {
+            active: isActive,
+            color: AGENT_META[activeHandoff ? (activeHandoff.from as AgentName) : name].color,
+          },
+        };
+      });
+
+      recentHandoffs
+        .filter((h) => h.from !== 'zeus' && h.to !== 'zeus')
+        .forEach((h, i) => {
           newEdges.push({
-            id: `base-${name}`,
-            source: 'zeus',
-            target: name,
-            style: { stroke: 'rgba(201,162,39,0.1)', strokeWidth: 1, strokeDasharray: '5,5' },
+            id: `handoff-agent-${i}`,
+            source: h.from,
+            target: h.to,
+            type: 'particle',
+            data: {
+              active: true,
+              color: AGENT_META[h.from as AgentName].color,
+            },
           });
         });
-      }
 
       setEdges(newEdges);
     };
@@ -233,6 +301,7 @@ export default function OlympusFlow({ store, onSelect }: { store: EventStore, on
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={onNodeClick}
