@@ -1,9 +1,11 @@
+"""Voice module exceptions."""
+
 from __future__ import annotations
 
 
 class TranscriptionError(RuntimeError):
-    """Raised when speech-to-text fails across all providers."""
+    """Raised when speech-to-text fails after all fallback attempts."""
 
 
 class SpeechError(RuntimeError):
-    """Raised when text-to-speech fails."""
+    """Raised when text-to-speech synthesis fails."""

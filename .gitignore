@@ -30,6 +30,9 @@ htmlcov/
 .coverage
 coverage.xml
 
+# Dev stubs (local testing only — never ship)
+agents/_dev_stub.py
+
 # IDE
 .vscode/
 .idea/
