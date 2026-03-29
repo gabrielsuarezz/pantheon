@@ -2,13 +2,14 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Zap, 
-  Target, 
-  Activity, 
-  AlertTriangle, 
-  ShieldCheck, 
-  Send 
+import {
+  Zap,
+  Target,
+  Activity,
+  AlertTriangle,
+  ShieldCheck,
+  Send,
+  Radio,
 } from 'lucide-react';
 import { EventStore, PantheonEvent } from '@/lib/event-store';
 
@@ -46,7 +47,7 @@ export default function DivineChronicle({ store }: { store: EventStore }) {
       <div className="px-6 py-4 border-b border-gold/10 bg-white/20 flex items-center justify-between shrink-0">
         <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-gold-dark flex items-center gap-2">
           <Activity className="w-4 h-4" />
-          Divine Chronicle
+          Event Log
         </h2>
         <span className="text-[10px] font-medium text-muted/60">
           {events.length} entries recorded
@@ -61,9 +62,9 @@ export default function DivineChronicle({ store }: { store: EventStore }) {
           {events.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center gap-4 text-muted/40">
               <div className="w-12 h-12 rounded-full border border-dashed border-gold/30 flex items-center justify-center">
-                ⚖️
+                <Radio className="w-5 h-5 opacity-40" />
               </div>
-              <p className="text-[10px] uppercase tracking-widest font-medium">Awaiting mission start...</p>
+              <p className="text-[10px] uppercase tracking-widest font-medium">No events yet</p>
             </div>
           ) : (
             events.map((event, i) => (

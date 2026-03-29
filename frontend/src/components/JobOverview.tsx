@@ -35,7 +35,7 @@ export default function JobOverview({ store }: { store: EventStore }) {
     return (
       <div className="glass-panel rounded-2xl p-6 border-gold/10">
         <p className="text-[10px] font-bold uppercase tracking-widest text-gold-dark/40">Job Overview</p>
-        <p className="text-xs text-muted mt-4 italic">Awaiting divine observation...</p>
+        <p className="text-xs text-muted mt-4 italic">No active job</p>
       </div>
     );
   }
@@ -53,14 +53,14 @@ export default function JobOverview({ store }: { store: EventStore }) {
     <div className="glass-panel rounded-2xl p-6 border-gold/10 space-y-6">
       <div>
         <h3 className="text-[10px] font-bold uppercase tracking-widest text-gold-dark/60">
-          Current Mission
+          Current Job
         </h3>
       </div>
 
       <div className="space-y-4">
         <div>
           <label className="text-[9px] font-bold text-gold-dark/40 uppercase tracking-wider block mb-1">
-            Mortal Sample
+            Sample
           </label>
           <p className="text-sm font-serif font-bold text-ink">
             {job.sampleName || 'Unknown Sample'}
@@ -69,7 +69,7 @@ export default function JobOverview({ store }: { store: EventStore }) {
 
         <div>
           <label className="text-[9px] font-bold text-gold-dark/40 uppercase tracking-wider block mb-1">
-            Divine Status
+            Status
           </label>
           <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${color}`}>
             {job.status}

@@ -9,12 +9,12 @@ import GodCard, {
 // ─── Agent Registry ────────────────────────────────────────────────────────────
 
 const AGENTS: AgentDef[] = [
-  { id: "zeus",   name: "Zeus",    glyph: "⚡", role: "Root Orchestrator",    color: "#f59e0b" },
-  { id: "athena", name: "Athena",  glyph: "🦉", role: "Static Analysis",      color: "#60a5fa" },
-  { id: "hermes", name: "Hermes",  glyph: "🌊", role: "Gateway & Delivery",   color: "#34d399" },
-  { id: "hades",  name: "Hades",   glyph: "💀", role: "Dynamic Analysis",     color: "#f87171" },
-  { id: "apollo", name: "Apollo",  glyph: "☀️", role: "IOC Enrichment",       color: "#fb923c" },
-  { id: "ares",   name: "Ares",    glyph: "⚔️", role: "Containment",          color: "#c084fc" },
+  { id: "zeus",   name: "Zeus",   role: "Root Orchestrator", color: "#f59e0b" },
+  { id: "athena", name: "Athena", role: "Static Analysis",   color: "#60a5fa" },
+  { id: "hermes", name: "Hermes", role: "Gateway & Delivery",color: "#34d399" },
+  { id: "hades",  name: "Hades",  role: "Dynamic Analysis",  color: "#f87171" },
+  { id: "apollo", name: "Apollo", role: "IOC Enrichment",    color: "#fb923c" },
+  { id: "ares",   name: "Ares",   role: "Containment",       color: "#c084fc" },
 ];
 
 const AGENT_MAP = Object.fromEntries(AGENTS.map((a) => [a.id, a])) as Record<AgentId, AgentDef>;

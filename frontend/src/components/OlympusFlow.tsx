@@ -14,19 +14,20 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Zap, ScanLine, FlaskConical, Globe, ShieldAlert, Radio, Eye, Wrench, type LucideIcon } from 'lucide-react';
 import { AgentName, EventStore, AgentStatus } from '@/lib/event-store';
 
 // ─── Constants & Registry ───────────────────────────────────────────────────
 
-const AGENT_META: Record<AgentName, { icon: string; color: string; label: string }> = {
-  zeus: { icon: '⚡', color: '#C9A227', label: 'Zeus' },
-  athena: { icon: '🦉', color: '#60A5FA', label: 'Athena' },
-  hades: { icon: '💀', color: '#F87171', label: 'Hades' },
-  apollo: { icon: '☀️', color: '#FBBF24', label: 'Apollo' },
-  ares: { icon: '⚔️', color: '#A78BFA', label: 'Ares' },
-  hermes: { icon: '🌊', color: '#34D399', label: 'Hermes' },
-  artemis: { icon: '🏹', color: '#F472B6', label: 'Artemis' },
-  hephaestus: { icon: '⚙️', color: '#94A3B8', label: 'Hephaestus' },
+const AGENT_META: Record<AgentName, { icon: LucideIcon; color: string; label: string }> = {
+  zeus:       { icon: Zap,          color: '#C9A227', label: 'Zeus'       },
+  athena:     { icon: ScanLine,     color: '#60A5FA', label: 'Athena'     },
+  hades:      { icon: FlaskConical, color: '#F87171', label: 'Hades'      },
+  apollo:     { icon: Globe,        color: '#FBBF24', label: 'Apollo'     },
+  ares:       { icon: ShieldAlert,  color: '#A78BFA', label: 'Ares'       },
+  hermes:     { icon: Radio,        color: '#34D399', label: 'Hermes'     },
+  artemis:    { icon: Eye,          color: '#F472B6', label: 'Artemis'    },
+  hephaestus: { icon: Wrench,       color: '#94A3B8', label: 'Hephaestus' },
 };
 
 const AGENT_ORDER: AgentName[] = ['athena', 'hades', 'apollo', 'ares', 'hermes', 'artemis', 'hephaestus'];
@@ -83,15 +84,15 @@ const GodNode = ({ data }: { data: any }) => {
       </AnimatePresence>
 
       {/* Main Node */}
-      <div 
-        className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shadow-warm transition-all duration-500 border-2
+      <div
+        className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-warm transition-all duration-500 border-2
           ${isActive ? 'scale-110 shadow-gold' : 'hover:scale-105'}
           ${isComplete ? 'bg-green-50/50 border-green-200' : 'bg-white/80'}
           ${isError ? 'bg-red-50/50 border-red-200' : ''}
         `}
         style={{ borderColor: isActive ? meta.color : isComplete ? '#22C55E' : 'rgba(201,162,39,0.2)' }}
       >
-        <span>{meta.icon}</span>
+        <meta.icon size={24} color={meta.color} />
         
         {/* Status Dot */}
         <div 

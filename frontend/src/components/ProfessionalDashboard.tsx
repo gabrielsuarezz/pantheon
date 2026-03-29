@@ -104,8 +104,8 @@ export default function ProfessionalDashboard() {
               {connected ? 'Live' : 'Offline'}
             </div>
           </div>
-          <div className="p-3 glass-panel rounded-xl text-[10px] font-medium leading-relaxed italic text-gold-dark/60 border-gold/20">
-            "Establishing divine connection to Hephaestus forge..."
+          <div className="p-3 glass-panel rounded-xl text-[10px] font-mono text-gold-dark/50 border-gold/20 truncate">
+            {connected ? 'ws://sandbox connected' : 'ws://sandbox disconnected'}
           </div>
         </div>
       </aside>
@@ -125,9 +125,9 @@ export default function ProfessionalDashboard() {
                 <div className="p-6 glass-panel rounded-2xl border-gold/20 space-y-6">
                   <h3 className="text-[10px] font-bold uppercase tracking-widest text-gold-dark/60">Global Statistics</h3>
                   <div className="grid grid-cols-1 gap-4">
-                    <MiniStat label="Engaged Agents" value={stats?.agents_active ?? 0} icon={<Users />} active />
-                    <MiniStat label="Threats Neutralized" value={stats?.agents_complete ?? 0} icon={<Shield />} />
-                    <MiniStat label="Divine Events" value={stats?.total_events ?? 0} icon={<Activity />} />
+                    <MiniStat label="Active Agents" value={stats?.agents_active ?? 0} icon={<Users />} active />
+                    <MiniStat label="Agents Complete" value={stats?.agents_complete ?? 0} icon={<Shield />} />
+                    <MiniStat label="Total Events" value={stats?.total_events ?? 0} icon={<Activity />} />
                   </div>
                 </div>
                 <IOCPanel store={store} />

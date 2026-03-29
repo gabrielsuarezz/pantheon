@@ -1,28 +1,37 @@
 'use client';
 
 import React, { useState } from 'react';
-import { 
-  Pause, 
-  Play, 
-  Square, 
-  RotateCcw, 
-  Shield, 
-  Zap, 
-  Activity, 
-  Clock, 
-  Terminal 
+import {
+  Pause,
+  Play,
+  Square,
+  RotateCcw,
+  Shield,
+  Activity,
+  Clock,
+  Terminal,
+  Zap,
+  ScanLine,
+  FlaskConical,
+  Globe,
+  ShieldAlert,
+  Radio,
+  Eye,
+  Wrench,
+  LayoutGrid,
+  type LucideIcon,
 } from 'lucide-react';
 import { AgentName, AgentStatus } from '@/lib/event-store';
 
-const AGENT_META: Record<AgentName, { icon: string; color: string; label: string; role: string }> = {
-  zeus: { icon: '⚡', color: '#C9A227', label: 'Zeus', role: 'Root Orchestrator' },
-  athena: { icon: '🦉', color: '#60A5FA', label: 'Athena', role: 'Static Analysis' },
-  hades: { icon: '💀', color: '#F87171', label: 'Hades', role: 'Dynamic Execution' },
-  apollo: { icon: '☀️', color: '#FBBF24', label: 'Apollo', role: 'IOC Enrichment' },
-  ares: { icon: '⚔️', color: '#A78BFA', label: 'Ares', role: 'Containment & IR' },
-  hermes: { icon: '🌊', color: '#34D399', label: 'Hermes', role: 'Gateway & Voice' },
-  artemis: { icon: '🏹', color: '#F472B6', label: 'Artemis', role: 'Sentinel Daemon' },
-  hephaestus: { icon: '⚙️', color: '#94A3B8', label: 'Hephaestus', role: 'Sandbox Forge' },
+const AGENT_META: Record<AgentName, { icon: LucideIcon; color: string; label: string; role: string }> = {
+  zeus:       { icon: Zap,          color: '#C9A227', label: 'Zeus',       role: 'Root Orchestrator' },
+  athena:     { icon: ScanLine,     color: '#60A5FA', label: 'Athena',     role: 'Static Analysis'   },
+  hades:      { icon: FlaskConical, color: '#F87171', label: 'Hades',      role: 'Dynamic Execution' },
+  apollo:     { icon: Globe,        color: '#FBBF24', label: 'Apollo',     role: 'IOC Enrichment'    },
+  ares:       { icon: ShieldAlert,  color: '#A78BFA', label: 'Ares',       role: 'Containment & IR'  },
+  hermes:     { icon: Radio,        color: '#34D399', label: 'Hermes',     role: 'Gateway & Voice'   },
+  artemis:    { icon: Eye,          color: '#F472B6', label: 'Artemis',    role: 'Sentinel Daemon'   },
+  hephaestus: { icon: Wrench,       color: '#94A3B8', label: 'Hephaestus', role: 'Sandbox Forge'     },
 };
 
 export default function AgentInspector({ agent }: { agent: AgentStatus | null }) {
@@ -32,11 +41,11 @@ export default function AgentInspector({ agent }: { agent: AgentStatus | null })
     return (
       <div className="h-full glass-panel rounded-2xl flex flex-col items-center justify-center p-8 text-center text-muted/40 gap-4">
         <div className="w-16 h-16 rounded-full border border-dashed border-gold/30 flex items-center justify-center opacity-30">
-          🏛️
+          <LayoutGrid className="w-7 h-7" />
         </div>
         <div className="space-y-1">
           <p className="text-[10px] uppercase tracking-widest font-bold">No Agent Selected</p>
-          <p className="text-[9px]">Select a deity from the map to view detailed telemetry</p>
+          <p className="text-[9px]">Select an agent from the map to view telemetry</p>
         </div>
       </div>
     );
@@ -65,11 +74,11 @@ export default function AgentInspector({ agent }: { agent: AgentStatus | null })
         
         <div className="relative flex items-start justify-between">
           <div className="flex gap-4">
-            <div 
-              className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shadow-warm border-2"
+            <div
+              className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-warm border-2"
               style={{ backgroundColor: 'white', borderColor: meta.color }}
             >
-              {meta.icon}
+              <meta.icon size={28} color={meta.color} />
             </div>
             <div className="pt-1">
               <h2 className="text-xl font-serif font-bold text-ink italic leading-tight">{meta.label}</h2>
@@ -90,21 +99,21 @@ export default function AgentInspector({ agent }: { agent: AgentStatus | null })
       {/* Stats Grid */}
       <div className="p-6 grid grid-cols-2 gap-3 shrink-0">
         <StatItem icon={<Activity />} label="Event Count" value={agent.event_count} />
-        <StatItem icon={<Clock />} label="Latency" value="12ms" />
-        <StatItem icon={<Shield />} label="Precision" value="99.4%" />
-        <StatItem icon={<Terminal />} label="I/O Throughput" value="1.2 KB/s" />
+        <StatItem icon={<Clock />} label="State" value={agent.state} />
+        <StatItem icon={<Shield />} label="Tools Called" value="—" />
+        <StatItem icon={<Terminal />} label="Handoffs" value="—" />
       </div>
 
       {/* Task Description */}
       <div className="px-6 py-4 flex-1 overflow-y-auto">
-        <label className="text-[9px] font-bold uppercase tracking-widest text-muted/60 mb-2 block">Current Divine Objective</label>
+        <label className="text-[9px] font-bold uppercase tracking-widest text-muted/60 mb-2 block">Current Task</label>
         <div className="p-4 rounded-xl bg-gold/5 border border-gold/10 italic text-[11px] text-ink/80 leading-relaxed shadow-inner">
-          {agent.current_task || `Consulting the protocols for high-fidelity ${meta.role.toLowerCase()}...`}
+          {agent.current_task || 'Idle'}
         </div>
-        
-        <label className="text-[9px] font-bold uppercase tracking-widest text-muted/60 mt-6 mb-2 block">Last Reasoned Thought</label>
+
+        <label className="text-[9px] font-bold uppercase tracking-widest text-muted/60 mt-6 mb-2 block">Last Thought</label>
         <p className="text-[10px] text-muted leading-relaxed pl-1">
-          {agent.last_thought || "Processing raw bytes. Establishing grounding context via MCP..."}
+          {agent.last_thought || '—'}
         </p>
       </div>
 

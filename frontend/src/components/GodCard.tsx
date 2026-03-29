@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Zap, ScanLine, FlaskConical, Globe, ShieldAlert, Radio, type LucideIcon } from "lucide-react";
 
 // ─── Types (shared with PantheonDashboard) ─────────────────────────────────────
 
@@ -10,10 +10,18 @@ export type AgentId = "zeus" | "athena" | "hermes" | "hades" | "apollo" | "ares"
 export interface AgentDef {
   id: AgentId;
   name: string;
-  glyph: string;   // single emoji glyph
   role: string;
   color: string;   // hex
 }
+
+const AGENT_ICONS: Record<AgentId, LucideIcon> = {
+  zeus:   Zap,
+  athena: ScanLine,
+  hades:  FlaskConical,
+  apollo: Globe,
+  ares:   ShieldAlert,
+  hermes: Radio,
+};
 
 export interface ThoughtEntry {
   id: string;
@@ -50,6 +58,7 @@ export default function GodCard({
   progress,
 }: GodCardProps) {
   const badge = latestThought ? BADGE_STYLES[latestThought.badge] : null;
+  const AgentIcon = AGENT_ICONS[agent.id];
 
   return (
     <div
@@ -78,18 +87,18 @@ export default function GodCard({
         {/* Row 1: Icon + name + status */}
         <div className="flex items-start justify-between gap-2 mb-2.5">
           <div className="flex items-center gap-2.5">
-            {/* God glyph */}
+            {/* Agent icon */}
             <div
-              className="w-9 h-9 rounded-lg flex items-center justify-center text-lg shrink-0 transition-all duration-300"
+              className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all duration-300"
               style={{
                 background: isWorking
                   ? `radial-gradient(circle, ${agent.color}30 0%, ${agent.color}08 100%)`
-                  : "rgba(255,255,255,0.04)",
-                border: `1px solid ${isWorking ? agent.color + "50" : "rgba(255,255,255,0.07)"}`,
+                  : "rgba(201,162,39,0.08)",
+                border: `1px solid ${isWorking ? agent.color + "50" : "rgba(201,162,39,0.15)"}`,
                 filter: isWorking ? `drop-shadow(0 0 6px ${agent.color}80)` : "none",
               }}
             >
-              {agent.glyph}
+              <AgentIcon size={18} color={isWorking ? agent.color : "#9A7A10"} />
             </div>
 
             <div>
