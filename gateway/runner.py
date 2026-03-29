@@ -195,7 +195,7 @@ async def get_agent_response(user_id: str, text: str, *, force_adk: bool = False
             logger.warning("ADK pipeline returned empty for user %s", user_id)
             break
         except ClientError as exc:
-            if exc.status_code == 429 and attempt == 0:
+            if exc.code == 429 and attempt == 0:
                 # Extract retry delay suggested by the API (default 40 s).
                 match = re.search(r"retry in (\d+)", str(exc), re.IGNORECASE)
                 wait = int(match.group(1)) + 2 if match else 40
