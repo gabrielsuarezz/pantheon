@@ -31,6 +31,7 @@ from agents.tools.sandbox_tools import (
 )
 from agents.tools.event_tools import emit_event
 from agents.tools.triage_tools import classify_threat, create_incident_ticket
+from agents.tools.vps_tools import detonate_sample
 
 __all__ = [
     "build_full_response",
@@ -38,6 +39,7 @@ __all__ = [
     "check_sandbox_health",
     "classify_threat",
     "create_incident_ticket",
+    "detonate_sample",
     "enrich_iocs_with_threat_intel",
     "extract_threat_summary_for_ares",
     "find_similar_jobs",
