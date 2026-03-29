@@ -30,12 +30,13 @@ _POLL_INTERVAL = 3
 
 
 async def tool_analyze(parameters: dict[str, Any]) -> str:
-    """Trigger sandbox analysis and poll until the report is ready.
+    """Trigger the full Zeus/ADK pipeline and return a complete verbal briefing.
 
-    Instead of returning immediately with "submitted", this tool waits for
-    the analysis to complete (up to _POLL_TIMEOUT seconds) so that Muse can
-    brief the analyst in the same turn. This prevents the ElevenLabs session
-    from disconnecting due to prolonged silence.
+    Routes through Zeus → Athena → Hades → Apollo → Ares so Muse receives the
+    full enriched briefing (IOC analysis, remediation plan, continuity impact)
+    rather than just the raw sandbox report.
+
+    Falls back to direct sandbox polling if the ADK pipeline fails.
     """
     filename = parameters.get("filename", "")
 
@@ -70,10 +71,35 @@ async def tool_analyze(parameters: dict[str, Any]) -> str:
         })
 
     job_id = str(uuid.uuid4())[:8]
+
+    # --- Primary path: full Zeus/ADK pipeline ---
+    # Zeus → Athena → Hades → Apollo → Ares → Zeus verbal briefing
+    try:
+        from gateway.runner import get_zeus_response
+
+        logger.info("Routing voice analysis through Zeus/ADK for %s", sample_path.name)
+        briefing = await get_zeus_response(
+            "voice-call-user",
+            f"analyze the malware sample at {sample_path}",
+        )
+        if briefing:
+            return json.dumps({
+                "status": "complete",
+                "job_id": job_id,
+                "filename": sample_path.name,
+                "message": briefing,
+            })
+        logger.warning("Zeus returned empty response — falling back to sandbox polling")
+    except Exception:
+        logger.exception(
+            "Zeus/ADK pipeline failed for %s — falling back to sandbox polling",
+            sample_path.name,
+        )
+
+    # --- Fallback: direct sandbox polling ---
     file_b64 = base64.b64encode(sample_path.read_bytes()).decode()
     sandbox_url = os.getenv("SANDBOX_API_URL", "http://localhost:9000")
 
-    # --- Submit the analysis job ---
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(
@@ -86,26 +112,19 @@ async def tool_analyze(parameters: dict[str, Any]) -> str:
                 },
             )
             resp.raise_for_status()
-            logger.info("Sandbox accepted job %s", job_id)
+            logger.info("Sandbox fallback accepted job %s", job_id)
     except Exception:
-        logger.exception(
-            "Sandbox not reachable — running ADK fallback for %s",
-            sample_path.name,
-        )
-        from gateway.runner import get_agent_response
-
-        response = await get_agent_response(
-            "voice-call-user",
-            f"analyze the malware sample at {sample_path}",
-        )
+        logger.exception("Sandbox fallback also unreachable for %s", sample_path.name)
         return json.dumps({
-            "status": "complete",
+            "status": "error",
             "job_id": job_id,
             "filename": sample_path.name,
-            "message": response,
+            "message": (
+                "Both the analysis pipeline and the sandbox are unavailable. "
+                "Please try again in a moment."
+            ),
         })
 
-    # --- Poll for the completed report ---
     elapsed = 0
     report_data: dict[str, Any] | None = None
 
@@ -126,9 +145,7 @@ async def tool_analyze(parameters: dict[str, Any]) -> str:
         except Exception:
             logger.debug("Poll attempt failed for job %s", job_id)
 
-    if report_data and report_data.get("status") in (
-        "complete", "completed",
-    ):
+    if report_data and report_data.get("status") in ("complete", "completed"):
         return json.dumps({
             "status": "complete",
             "job_id": job_id,
@@ -136,7 +153,6 @@ async def tool_analyze(parameters: dict[str, Any]) -> str:
             "report": report_data,
         })
 
-    # Timed out or still running — return what we have
     return json.dumps({
         "status": "in_progress",
         "job_id": job_id,
