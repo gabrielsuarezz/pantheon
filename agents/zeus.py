@@ -4,7 +4,6 @@ from __future__ import annotations
 from google.adk.agents import Agent
 
 from agents.athena import athena
-from agents.hades import hades
 from agents.model_config import ZEUS_MODEL
 from agents.tools.event_tools import emit_event
 
@@ -124,5 +123,5 @@ SAMPLE TRACKING:
         " the Pantheon swarm pipeline (Athena → Hades → Apollo → impact_agent → Ares)."
     ),
     tools=[emit_event],
-    sub_agents=[athena, hades],
+    sub_agents=[athena],
 )

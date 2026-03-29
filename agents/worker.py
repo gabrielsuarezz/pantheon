@@ -6,6 +6,7 @@ This creates the continuous 'Swarm loop' automating the malware pipeline.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from pathlib import Path
 
@@ -28,7 +29,7 @@ async def _on_new_sample(path: Path) -> None:
         event_type=EventType.AGENT_ACTIVATED.value,
         agent=AgentName.ARTEMIS.value,
         job_id=job_id,
-        payload={"message": f"Artemis detected new sample: {path.name}"},
+        payload=json.dumps({"message": f"Artemis detected new sample: {path.name}"}),
     )
     logger.info("Artemis passed new sample %s to Swarm (Job: %s)", path, job_id)
 
@@ -55,7 +56,7 @@ async def swarm_worker_loop() -> None:
                         event_type=EventType.AGENT_ACTIVATED,
                         agent=AgentName.ZEUS,
                         job_id=job.job_id,
-                        payload={"message": "Initializing orchestrator pipeline."},
+                        payload=json.dumps({"message": "Initializing orchestrator pipeline."}),
                     )
                     
                     await zeus.run(prompt)
@@ -65,7 +66,7 @@ async def swarm_worker_loop() -> None:
                         event_type=EventType.ANALYSIS_COMPLETE,
                         agent=AgentName.ZEUS,
                         job_id=job.job_id,
-                        payload={"message": "Analysis loop complete."},
+                        payload=json.dumps({"message": "Analysis loop complete."}),
                     )
 
                 except Exception as e:
@@ -75,7 +76,7 @@ async def swarm_worker_loop() -> None:
                         event_type=EventType.ERROR,
                         agent=AgentName.ZEUS,
                         job_id=job.job_id,
-                        payload={"error": str(e)},
+                        payload=json.dumps({"error": str(e)}),
                     )
 
         except Exception as e:

@@ -7,6 +7,7 @@ and the /start, /reset, /status commands.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 from collections.abc import Coroutine
@@ -144,7 +145,7 @@ async def _send_with_typing(
             emit_event(
                 EventType.AGENT_ACTIVATED.value,
                 agent=AgentName.HERMES.value,
-                payload={"step": f"telegram_prompt:{prompt[:120]}"},
+                payload=json.dumps({"step": f"telegram_prompt:{prompt[:120]}"}),
             ),
         )
         # Emit handoff from Hermes → Zeus so the dashboard shows the transfer.
@@ -152,7 +153,7 @@ async def _send_with_typing(
             emit_event(
                 EventType.HANDOFF.value,
                 agent=AgentName.HERMES.value,
-                payload={"from": "hermes", "to": "zeus"},
+                payload=json.dumps({"from": "hermes", "to": "zeus"}),
             ),
         )
 

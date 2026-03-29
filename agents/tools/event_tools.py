@@ -7,6 +7,7 @@ must never block or crash a tool invocation.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 from typing import Any
@@ -26,15 +27,26 @@ async def emit_event(
     agent: str | None = None,
     tool: str | None = None,
     job_id: str | None = None,
-    payload: dict[str, Any] | None = None,
+    payload: str | None = None,
 ) -> None:
-    """Fire-and-forget: emit a PantheonEvent to the Hephaestus EventBus."""
+    """Fire-and-forget: emit a PantheonEvent to the Hephaestus EventBus.
+
+    LLM callers pass payload as a JSON string e.g. '{"from": "zeus", "to": "athena"}'.
+    Programmatic callers (bot.py, worker.py) also pass a JSON string via json.dumps().
+    """
+    parsed: dict[str, Any] = {}
+    if payload:
+        try:
+            parsed = json.loads(payload) if isinstance(payload, str) else payload
+        except (json.JSONDecodeError, TypeError):
+            parsed = {"raw": str(payload)}
+
     event = PantheonEvent(
         type=EventType(event_type.lower()),
         agent=AgentName(agent.lower()) if agent else None,
         tool=tool,
         job_id=job_id,
-        payload=payload or {},
+        payload=parsed,
     )
     try:
         async with httpx.AsyncClient(timeout=2.0) as client:
