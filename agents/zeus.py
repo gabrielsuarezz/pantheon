@@ -3,8 +3,6 @@ from __future__ import annotations
 
 from google.adk.agents import Agent
 
-from agents.apollo import apollo
-from agents.ares import ares
 from agents.athena import athena
 from agents.hades import hades
 from agents.model_config import ZEUS_MODEL
@@ -105,5 +103,5 @@ SAMPLE TRACKING:
         "Root orchestrator — receives analyst requests via Telegram and coordinates"
         " the Pantheon swarm pipeline (Athena → Hades → Apollo → Ares)."
     ),
-    sub_agents=[athena, hades, apollo, ares],
+    sub_agents=[athena, hades],
 )
