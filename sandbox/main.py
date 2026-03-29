@@ -93,12 +93,6 @@ def _install_log_streaming() -> None:
     _LOG_STREAMING_INSTALLED = True
 
 
-async def _telemetry_heartbeat() -> None:
-    """Emit periodic keepalive lines so the dashboard terminal stays visibly live."""
-    while True:
-        _emit_telemetry("heartbeat: hephaestus alive", command="heartbeat", stream="stdout")
-        await asyncio.sleep(5)
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from agents.artemis import Artemis
@@ -112,14 +106,12 @@ async def lifespan(app: FastAPI):
     # Start the background tasks
     artemis_task = asyncio.create_task(artemis_daemon.run())
     worker_task = asyncio.create_task(swarm_worker_loop())
-    heartbeat_task = asyncio.create_task(_telemetry_heartbeat())
     
     yield
     
     # Cancel tasks on shutdown
     artemis_task.cancel()
     worker_task.cancel()
-    heartbeat_task.cancel()
 
 app = FastAPI(
     title="Hephaestus",

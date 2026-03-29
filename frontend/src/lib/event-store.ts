@@ -280,7 +280,9 @@ export class EventStore {
   }
 
   getTelemetry() {
-    return [...this.telemetry];
+    return this.telemetry.filter(
+      (entry) => !this.isHeartbeatTelemetry(entry.command, entry.output)
+    );
   }
 
   getHandoffs() {
@@ -312,6 +314,9 @@ export class EventStore {
 
     if (event.type === "TELEMETRY") {
       const message = (payload.output as string) || (payload.message as string) || "";
+      if (this.isHeartbeatTelemetry(payload.command as string | undefined, message)) {
+        return;
+      }
       const stream = payload.stream as "stdin" | "stdout" | "stderr" | undefined;
       this.pushTelemetry({
         timestamp: event.timestamp,
@@ -331,6 +336,12 @@ export class EventStore {
       output: summary.output,
       stream: summary.stream,
     });
+  }
+
+  private isHeartbeatTelemetry(command: string | undefined, output: string): boolean {
+    const normalizedCommand = (command || "").trim().toLowerCase();
+    const normalizedOutput = output.trim().toLowerCase();
+    return normalizedCommand === "heartbeat" || normalizedOutput === "heartbeat: hephaestus alive";
   }
 
   private describeEvent(event: PantheonEvent): {
