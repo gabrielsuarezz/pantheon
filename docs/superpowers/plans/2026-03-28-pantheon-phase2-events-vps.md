@@ -18,10 +18,10 @@
 | 2: EventBus (sandbox/events.py) | DONE | `feat: add EventBus for WebSocket pub/sub` |
 | 3: /ws + POST /events (sandbox/main.py) | DONE | `feat: add /ws WebSocket and POST /events endpoints to Hephaestus` |
 | 4: emit_event() helper (agents/tools/event_tools.py) | DONE | `feat: add emit_event() helper for agent tool event emission` |
-| 5: Wrap sandbox_tools.py | pending | — |
-| 6: Wrap memory/report/remediation tools | pending | — |
-| 7: vps_tools.py | pending | — |
-| 8: Wire Hades to VPS + STAGE_UNLOCKED | pending | — |
+| 5: Wrap sandbox_tools.py | DONE | `feat: wrap sandbox_tools with event emission` |
+| 6: Wrap memory/report/remediation tools | DONE | `feat: wrap memory, report, and remediation tools with event emission` |
+| 7: vps_tools.py | DONE | `feat: add Windows VPS monitoring tools (Procmon, FakeNet-NG, detonate_sample)` |
+| 8: Wire Hades to VPS + STAGE_UNLOCKED | DONE | `feat: wire Hades VPS detonation and STAGE_UNLOCKED event emission` |
 | 9: Hermes dashboard link + activation event | pending (Gabriel) | — |
 | 10: Dashboard WebSocket integration | pending (Sai) | — |
 | 11: Windows VPS setup | pending (manual) | — |
@@ -686,7 +686,7 @@ git commit -m "feat: add emit_event() helper for agent tool event emission"
 
 Apply the emit-before/emit-after pattern to every public function. The pattern is identical for all tools — shown once in full for `submit_sample`, then applied to the remaining functions.
 
-- [ ] **Step 1: Add imports to sandbox_tools.py**
+- [x] **Step 1: Add imports to sandbox_tools.py**
 
 At the top of `agents/tools/sandbox_tools.py`, add:
 
@@ -695,7 +695,7 @@ from agents.tools.event_tools import emit_event
 from sandbox.models import AgentName, EventType
 ```
 
-- [ ] **Step 2: Wrap submit_sample**
+- [x] **Step 2: Wrap submit_sample**
 
 Replace the existing `submit_sample` function body with:
 
@@ -734,7 +734,7 @@ async def submit_sample(file_path: str, analysis_type: str = "both") -> dict[str
     return {"job_id": result.job_id, "status": result.status}
 ```
 
-- [ ] **Step 3: Apply same pattern to get_report, poll_report, get_iocs, check_sandbox_health**
+- [x] **Step 3: Apply same pattern to get_report, poll_report, get_iocs, check_sandbox_health**
 
 For each function:
 - Add `await emit_event(EventType.TOOL_CALLED, agent=AgentName.HADES, tool="<fn_name>", job_id=job_id_if_available, payload={...key_inputs})` at the top of the function body
@@ -742,7 +742,7 @@ For each function:
 
 For `get_report` the agent is `AgentName.HADES`, for `get_iocs` the agent is `AgentName.APOLLO`. For `check_sandbox_health` the agent is `AgentName.HADES`.
 
-- [ ] **Step 4: Run existing tests to confirm nothing broke**
+- [x] **Step 4: Run existing tests to confirm nothing broke**
 
 ```bash
 uv run pytest tests/agents/ -v
@@ -751,7 +751,7 @@ uv run mypy agents/tools/sandbox_tools.py
 
 Expected: all existing tests pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add agents/tools/sandbox_tools.py
@@ -775,7 +775,7 @@ Apply the same pattern from Task 5 to every public function in each file. Use th
 | report_tools.py | `AgentName.APOLLO` |
 | remediation_tools.py | `AgentName.ARES` |
 
-- [ ] **Step 1: Add imports to each file**
+- [x] **Step 1: Add imports to each file**
 
 At the top of each file add:
 
@@ -784,7 +784,7 @@ from agents.tools.event_tools import emit_event
 from sandbox.models import AgentName, EventType
 ```
 
-- [ ] **Step 2: Wrap all public functions in memory_tools.py**
+- [x] **Step 2: Wrap all public functions in memory_tools.py**
 
 Example for `store_agent_output`:
 
@@ -812,7 +812,7 @@ async def store_agent_output(
 
 Apply this pattern to every function in all three files. The payload for TOOL_RESULT should summarize the output — not dump the full text.
 
-- [ ] **Step 3: Run tests**
+- [x] **Step 3: Run tests**
 
 ```bash
 uv run pytest tests/agents/ -v
@@ -821,7 +821,7 @@ uv run mypy agents/tools/memory_tools.py agents/tools/report_tools.py agents/too
 
 Expected: all pass.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add agents/tools/memory_tools.py agents/tools/report_tools.py agents/tools/remediation_tools.py
@@ -840,13 +840,13 @@ These tools SSH into the Windows VPS, run monitoring software, retrieve logs, an
 
 **Prerequisites:** `uv add paramiko` before writing this task.
 
-- [ ] **Step 0: Add paramiko dependency**
+- [x] **Step 0: Add paramiko dependency**
 
 ```bash
 uv add paramiko
 ```
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `tests/agents/test_vps_tools.py`:
 
@@ -917,7 +917,7 @@ async def test_parse_fakenet_log_extracts_dns_queries() -> None:
     assert any(e.event_type == "dns_query" and "evil.example.com" in e.host for e in events)
 ```
 
-- [ ] **Step 2: Run to confirm failure**
+- [x] **Step 2: Run to confirm failure**
 
 ```bash
 uv run pytest tests/agents/test_vps_tools.py -v
@@ -925,7 +925,7 @@ uv run pytest tests/agents/test_vps_tools.py -v
 
 Expected: `ImportError` — module does not exist.
 
-- [ ] **Step 3: Create agents/tools/vps_tools.py**
+- [x] **Step 3: Create agents/tools/vps_tools.py**
 
 ```python
 """Windows VPS monitoring tools — live detonation with Procmon and FakeNet-NG.
@@ -1177,7 +1177,7 @@ async def detonate_sample(sample_path: str) -> dict[str, Any]:
     return result.model_dump()
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 ```bash
 uv run pytest tests/agents/test_vps_tools.py -v
@@ -1186,7 +1186,7 @@ uv run mypy agents/tools/vps_tools.py
 
 Expected: all pass, mypy clean.
 
-- [ ] **Step 5: Export from __init__.py**
+- [x] **Step 5: Export from __init__.py**
 
 Add to `agents/tools/__init__.py`:
 
@@ -1194,7 +1194,7 @@ Add to `agents/tools/__init__.py`:
 from agents.tools.vps_tools import detonate_sample
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add agents/tools/vps_tools.py agents/tools/__init__.py tests/agents/test_vps_tools.py
@@ -1210,15 +1210,15 @@ git commit -m "feat: add Windows VPS monitoring tools (Procmon, FakeNet-NG, deto
 
 After `poll_report` completes, Hades calls `detonate_sample()` and derives attack chain stages from the results. Each confirmed stage emits `STAGE_UNLOCKED`. Stages must be derived from actual detonation output — nothing hardcoded.
 
-- [ ] **Step 1: Read the current agents/hades.py**
+- [x] **Step 1: Read the current agents/hades.py**
 
 Read `agents/hades.py` fully before making any changes. Understand the current instruction set and tool list.
 
-- [ ] **Step 2: Add detonate_sample to Hades tools list**
+- [x] **Step 2: Add detonate_sample to Hades tools list**
 
 In the Hades agent definition, add `detonate_sample` to the `tools` parameter alongside existing tools.
 
-- [ ] **Step 3: Update Hades instruction to include VPS detonation step**
+- [x] **Step 3: Update Hades instruction to include VPS detonation step**
 
 In the Hades `instruction` string, add after the sandbox analysis steps:
 
@@ -1237,7 +1237,7 @@ After sandbox analysis completes and you have a ThreatReport:
    Only emit a stage if there is actual evidence for it in the detonation result.
 ```
 
-- [ ] **Step 4: Add AGENT_ACTIVATED and AGENT_COMPLETED emission**
+- [x] **Step 4: Add AGENT_ACTIVATED and AGENT_COMPLETED emission**
 
 At the entry point of Hades (the first instruction line), wrap with:
 
@@ -1251,7 +1251,7 @@ and then call emit_event with type=HANDOFF, payload={from: hades, to: apollo}.
 
 Add `emit_event` to the Hades tools list.
 
-- [ ] **Step 5: Run pipeline tests**
+- [x] **Step 5: Run pipeline tests**
 
 ```bash
 uv run pytest tests/agents/test_pipeline.py -v
@@ -1260,7 +1260,7 @@ uv run mypy agents/hades.py
 
 Expected: all pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add agents/hades.py
