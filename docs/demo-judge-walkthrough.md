@@ -6,7 +6,7 @@ Google ADK Challenge demo script. One presenter drives, one narrates if possible
 
 ## Before the demo
 
-- ADK Dev UI open in browser: `$PANTHEON_AGENTS_URL/dev-ui/`
+- ADK Dev UI open in browser: https://pantheon-agents-63prhgdheq-uc.a.run.app/dev-ui/
 - Live dashboard open in second tab: `$VULTR_SERVER_IP/dashboard`
 - Sample ready: `6108674530.JS.malicious` (filename only — do NOT open the file)
 - Terminal ready with the trigger curl command
@@ -36,11 +36,11 @@ Point at the two Cloud Run URLs in the browser address bar (or show both tabs).
 Run in terminal:
 
 ```bash
-curl -X POST "$PANTHEON_AGENTS_URL/apps/pantheon_agent/users/demo/sessions" \
+curl -X POST "https://pantheon-agents-63prhgdheq-uc.a.run.app/apps/pantheon_agent/users/demo/sessions" \
   -H "Content-Type: application/json" \
   -d '{"state": {}}'
 # Copy the session_id from the response, then:
-curl -X POST "$PANTHEON_AGENTS_URL/apps/pantheon_agent/users/demo/sessions/<session_id>/run" \
+curl -X POST "https://pantheon-agents-63prhgdheq-uc.a.run.app/apps/pantheon_agent/users/demo/sessions/<session_id>/run" \
   -H "Content-Type: application/json" \
   -d '{"new_message": {"role": "user", "parts": [{"text": "Analyze sample: 6108674530.JS.malicious — AsyncRAT dropper, known IOCs already in agent context."}]}}'
 ```
@@ -90,7 +90,7 @@ Point at the two URLs.
 When the pipeline completes, scroll the Dev UI response or pull it from the session:
 
 ```bash
-curl "$PANTHEON_AGENTS_URL/apps/pantheon_agent/users/demo/sessions/<session_id>"
+curl "https://pantheon-agents-63prhgdheq-uc.a.run.app/apps/pantheon_agent/users/demo/sessions/<session_id>"
 ```
 
 > "The final document has six sections — threat intelligence, critical infrastructure impact from the remote specialist, then containment, remediation, and prevention from the three parallel Ares planners. One document. One pipeline. Six agents."

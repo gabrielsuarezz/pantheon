@@ -313,9 +313,9 @@ Pantheon exposes a live ADK Dev UI and a remote A2A specialist on Google Cloud R
 
 | Surface | URL |
 | ------- | --- |
-| ADK Dev UI (open for judges) | `$PANTHEON_AGENTS_URL/dev-ui/` |
-| Pantheon agent API | `$PANTHEON_AGENTS_URL` |
-| Remote A2A impact specialist | `$PANTHEON_IMPACT_AGENT_URL` |
+| ADK Dev UI (open for judges) | https://pantheon-agents-63prhgdheq-uc.a.run.app/dev-ui/ |
+| Pantheon agent API | https://pantheon-agents-63prhgdheq-uc.a.run.app |
+| Remote A2A impact specialist | https://impact-agent-63prhgdheq-uc.a.run.app |
 
 **What judges will see in the ADK UI:**
 - The full Pantheon agent tree (Zeus → Athena → Hades → Apollo → Ares)

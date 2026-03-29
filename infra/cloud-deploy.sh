@@ -93,7 +93,6 @@ COMMON_FLAGS=(
   --cpu 1
   --min-instances 1
   --max-instances 3
-  --set-env-vars "GOOGLE_API_KEY=${API_KEY}"
   --quiet
 )
 
