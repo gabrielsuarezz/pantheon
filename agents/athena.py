@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 
 from google.adk.agents import Agent
 
+from agents.hades import hades
 from agents.model_config import ATHENA_MODEL
 from agents.tools.event_tools import emit_event
 
@@ -111,4 +112,5 @@ RULES:
 """,
     description="Triages incidents — classifies severity and category, opens an incident ticket.",
     tools=[classify_threat, create_incident_ticket, emit_event],
+    sub_agents=[hades],
 )
