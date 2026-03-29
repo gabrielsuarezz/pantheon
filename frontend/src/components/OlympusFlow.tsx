@@ -33,7 +33,7 @@ const AGENT_META: Record<AgentName, { icon: LucideIcon; color: string; label: st
 const AGENT_ORDER: AgentName[] = ['athena', 'hades', 'apollo', 'ares', 'hermes', 'artemis', 'hephaestus'];
 
 // Circular layout coordinates (Zeus at 0,0)
-const RAD = 250;
+const RAD = 320;
 const POSITIONS: Record<AgentName, { x: number; y: number }> = {
   zeus: { x: 0, y: 0 },
   ...Object.fromEntries(
@@ -42,69 +42,122 @@ const POSITIONS: Record<AgentName, { x: number; y: number }> = {
       return [name, { x: Math.cos(angle) * RAD, y: Math.sin(angle) * RAD }];
     })
   ),
-} as any;
+} as Record<AgentName, { x: number; y: number }>;
 
 // ─── Custom Components ──────────────────────────────────────────────────────
 
 const GodNode = ({ data }: { data: any }) => {
   const meta = AGENT_META[data.name as AgentName];
-  const isActive = data.state === 'active';
+  const isZeus    = data.name === 'zeus';
+  const isActive  = data.state === 'active';
   const isComplete = data.state === 'complete';
-  const isError = data.state === 'error';
+  const isError   = data.state === 'error';
+
+  const size    = isZeus ? 112 : 96;
+  const ringSize = size + 28;
+
+  const dotColor = isActive ? '#F59E0B' : isComplete ? '#22C55E' : isError ? '#EF4444' : '#94A3B8';
 
   return (
-    <div className={`relative flex flex-col items-center group`}>
-      {/* Glow Effect */}
-      <AnimatePresence>
-        {isActive && (
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1.5, opacity: 0.2 }}
-            exit={{ opacity: 0 }}
-            transition={{ repeat: Infinity, duration: 1.5, ease: "easeOut" }}
-            className="absolute -inset-4 rounded-full"
-            style={{ backgroundColor: meta.color }}
-          />
-        )}
-      </AnimatePresence>
+    <div className="relative flex flex-col items-center" style={{ width: size + 60 }}>
 
-      {/* Thought Bubble */}
-      <AnimatePresence>
-        {data.last_thought && (
-          <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.9 }}
-            animate={{ opacity: 1, y: -60, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            className="absolute z-10 w-48 p-2 text-[10px] glass-panel rounded-xl text-center shadow-gold italic font-medium border-gold/30 bg-white/90"
-          >
-            "{data.last_thought}"
-            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-white rotate-45 border-b border-r border-gold/20" />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Zeus command-radius ring */}
+      {isZeus && (
+        <div
+          className="absolute rounded-full border border-dashed pointer-events-none"
+          style={{
+            width: 160,
+            height: 160,
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            borderColor: 'rgba(201,162,39,0.25)',
+          }}
+        />
+      )}
 
-      {/* Main Node */}
+      {/* Glow ring */}
       <div
-        className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-warm transition-all duration-500 border-2
-          ${isActive ? 'scale-110 shadow-gold' : 'hover:scale-105'}
-          ${isComplete ? 'bg-green-50/50 border-green-200' : 'bg-white/80'}
-          ${isError ? 'bg-red-50/50 border-red-200' : ''}
-        `}
-        style={{ borderColor: isActive ? meta.color : isComplete ? '#22C55E' : 'rgba(201,162,39,0.2)' }}
+        className="absolute rounded-full pointer-events-none"
+        style={{
+          width: ringSize,
+          height: ringSize,
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          background: `radial-gradient(circle, ${meta.color}40 0%, transparent 70%)`,
+          opacity: isActive ? 1 : 0.25,
+          animation: isActive ? 'pulse-ring 1.5s ease-in-out infinite' : undefined,
+        }}
+      />
+
+      {/* Node circle */}
+      <div
+        className="rounded-full flex items-center justify-center transition-all duration-500 relative"
+        style={{
+          width: size,
+          height: size,
+          background: 'rgba(255,255,255,0.85)',
+          backdropFilter: 'blur(8px)',
+          border: `2px solid ${isActive ? meta.color : isComplete ? '#22C55E' : `${meta.color}40`}`,
+          boxShadow: isActive
+            ? `0 0 48px ${meta.color}60, 0 0 16px ${meta.color}30, inset 0 1px 0 rgba(255,255,255,0.8)`
+            : `0 2px 16px ${meta.color}15, inset 0 1px 0 rgba(255,255,255,0.6)`,
+          transform: isActive ? 'scale(1.06)' : 'scale(1)',
+        }}
       >
-        <meta.icon size={24} color={meta.color} />
-        
-        {/* Status Dot */}
-        <div 
-          className={`absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-white shadow-sm
-            ${isActive ? 'bg-amber-400 animate-pulse' : isComplete ? 'bg-green-500' : isError ? 'bg-red-500' : 'bg-slate-300'}
-          `}
+        <meta.icon
+          size={isZeus ? 36 : 28}
+          color={isActive ? meta.color : `${meta.color}90`}
+          style={{ transition: 'color 0.3s' }}
+        />
+
+        {/* State dot */}
+        <div
+          className="absolute rounded-full border-2 border-white"
+          style={{
+            width: 12,
+            height: 12,
+            top: 4,
+            right: 4,
+            background: dotColor,
+            boxShadow: isActive ? `0 0 8px ${dotColor}` : undefined,
+            animation: isActive ? 'pulse-ring 1s ease-in-out infinite' : undefined,
+          }}
         />
       </div>
 
-      <div className="mt-2 text-[10px] font-bold uppercase tracking-widest text-gold-dark opacity-80">
+      {/* Label */}
+      <div
+        className="mt-2 text-[10px] font-bold uppercase tracking-widest text-center transition-colors duration-300"
+        style={{ color: isActive ? meta.color : '#9A7A10', opacity: isActive ? 1 : 0.7 }}
+      >
         {meta.label}
       </div>
+
+      {/* Live thought — only when active */}
+      <AnimatePresence>
+        {isActive && data.last_thought && (
+          <motion.div
+            key={data.last_thought}
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="mt-1 text-[9px] italic text-center leading-tight"
+            style={{
+              color: '#5a4e30',
+              maxWidth: 120,
+              overflow: 'hidden',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+            }}
+          >
+            {data.last_thought}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -198,7 +251,7 @@ export default function OlympusFlow({ store, onSelect }: { store: EventStore, on
         <Panel position="top-right" className="m-4">
           <div className="glass-panel px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest text-gold-dark flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-            Live Map of Olympus
+            Agent Network
           </div>
         </Panel>
       </ReactFlow>
