@@ -43,18 +43,14 @@ export default function DivineChronicle({ store }: { store: EventStore }) {
   }, [events]);
 
   return (
-    <div className="flex flex-col h-full glass-panel rounded-2xl overflow-hidden border-gold/20 shadow-warm bg-white/40">
-      <div className="px-6 py-4 border-b border-gold/10 bg-white/20 flex items-center justify-between shrink-0">
-        <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-gold-dark flex items-center gap-2">
-          <Activity className="w-4 h-4" />
-          Event Log
-        </h2>
+    <div className="flex flex-col h-full">
+      <div className="px-5 py-3 border-b border-gold/10 bg-white/20 flex items-center justify-between shrink-0">
         <span className="text-[10px] font-medium text-muted/60">
-          {events.length} entries recorded
+          {events.length} entries
         </span>
       </div>
 
-      <div 
+      <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto px-4 py-2 scrollbar-hide space-y-1"
       >
