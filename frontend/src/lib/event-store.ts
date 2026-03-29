@@ -51,6 +51,16 @@ export interface IOCEntry {
   context?: string;
 }
 
+export type Statistics = {
+  total_events: number;
+  agents_active: number;
+  agents_complete: number;
+  agents_idle: number;
+  total_iocs: number;
+  critical_iocs: number;
+  stages_discovered: number;
+};
+
 export interface ProcessNode {
   id: string;
   name: string;

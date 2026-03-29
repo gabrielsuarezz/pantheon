@@ -9,6 +9,7 @@ interface Job {
   status: string;
   createdAt: string;
   eventCount: number;
+  sampleName: string;
 }
 
 export default function JobOverview({ store }: { store: EventStore }) {
@@ -19,10 +20,11 @@ export default function JobOverview({ store }: { store: EventStore }) {
       const current = store.getCurrentJob();
       if (current) {
         setJob({
-          id: current.id,
+          id: current.job_id,
           status: current.status,
           createdAt: new Date(current.created_at).toLocaleString(),
           eventCount: store.getRecentEvents().length,
+          sampleName: current.sample_name,
         });
       }
     });

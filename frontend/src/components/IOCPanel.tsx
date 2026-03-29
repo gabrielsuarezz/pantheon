@@ -13,7 +13,7 @@ const severityConfig = {
 
 export default function IOCPanel({ store }: { store: EventStore }) {
   const [iocs, setIocs] = useState<IOCEntry[]>([]);
-  const [filter, setFilter] = useState<string>('all');
+  const [filter, setFilter] = useState<'all' | 'critical' | 'high' | 'medium' | 'low'>('all');
 
   useEffect(() => {
     const unsubscribe = store.subscribe(() => {
@@ -54,7 +54,7 @@ export default function IOCPanel({ store }: { store: EventStore }) {
 
       {/* Filter Tabs */}
       <div className="flex gap-1 flex-wrap">
-        {['all', 'critical', 'high', 'medium', 'low'].map((f) => (
+        {(['all', 'critical', 'high', 'medium', 'low'] as const).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}

@@ -19,7 +19,7 @@ export default function ProfessionalDashboard() {
     const unsubscribe = store.subscribe(() => {
       setStats(store.getStatistics());
       const job = store.getCurrentJob();
-      if (job) setJobId(job.id);
+      if (job) setJobId(job.job_id);
     });
 
     const sandboxUrl = process.env.NEXT_PUBLIC_SANDBOX_URL || 'http://localhost:9000';
@@ -31,8 +31,9 @@ export default function ProfessionalDashboard() {
         console.log('✓ Connected to Pantheon EventBus');
       })
       .catch((err) => {
-        console.error('WebSocket connection failed:', err);
+        console.error('WebSocket connection error:', err.message || err);
         setConnected(false);
+        // User is notified via the UI connection indicator
       });
 
     return () => {
@@ -55,18 +56,26 @@ export default function ProfessionalDashboard() {
           <div>
             <h1 className="text-2xl font-light tracking-tight">Pantheon Analysis</h1>
             <p className="text-xs text-slate-500 mt-1">
-              {jobId ? `Job: ${jobId}` : 'Waiting for analysis...'}
+              {jobId ? `Job: ${jobId}` : connected ? 'Ready for analysis' : 'Waiting for Hephaestus...'}
             </p>
           </div>
           
           <div className="flex items-center gap-3">
+            {!connected && (
+              <div className="text-xs text-slate-400 max-w-xs text-right">
+                <p className="mb-1">Hephaestus not detected</p>
+                <code className="text-xs bg-slate-800/50 px-2 py-1 rounded block">
+                  {process.env.NEXT_PUBLIC_SANDBOX_URL || 'http://localhost:9000'}
+                </code>
+              </div>
+            )}
             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-sm text-xs font-medium ${
               connected 
                 ? 'bg-green-500/10 text-green-400' 
-                : 'bg-red-500/10 text-red-400'
+                : 'bg-amber-500/10 text-amber-400'
             }`}>
               <div className={`w-2 h-2 rounded-full ${
-                connected ? 'bg-green-400' : 'bg-red-400'
+                connected ? 'bg-green-400' : 'bg-amber-400'
               }`} />
               {connected ? 'Connected' : 'Offline'}
             </div>
