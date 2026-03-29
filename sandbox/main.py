@@ -6,6 +6,8 @@ import logging
 import docker
 import docker.errors
 from fastapi import FastAPI, HTTPException, WebSocket
+from contextlib import asynccontextmanager
+import asyncio
 
 from sandbox.analyzer import Analyzer
 from sandbox.events import bus
@@ -28,10 +30,28 @@ logging.basicConfig(
 )
 logger = logging.getLogger("hephaestus")
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from agents.artemis import Artemis
+    from agents.worker import _on_new_sample, swarm_worker_loop
+
+    artemis_daemon = Artemis(on_new_sample=_on_new_sample)
+    
+    # Start the background tasks
+    artemis_task = asyncio.create_task(artemis_daemon.run())
+    worker_task = asyncio.create_task(swarm_worker_loop())
+    
+    yield
+    
+    # Cancel tasks on shutdown
+    artemis_task.cancel()
+    worker_task.cancel()
+
 app = FastAPI(
     title="Hephaestus",
     description="Pantheon malware sandbox service",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 _analyzer = Analyzer()
