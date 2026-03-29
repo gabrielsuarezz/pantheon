@@ -1,10 +1,19 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Zap, Shield, AlertTriangle, Activity, X, Radio } from "lucide-react";
+import { Zap, Shield, AlertTriangle, Activity, X, Radio, ScanLine, FlaskConical, Globe, ShieldAlert, type LucideIcon } from "lucide-react";
 import GodCard, {
   AgentDef, AgentId, Badge, ThoughtEntry, BADGE_STYLES,
 } from "./GodCard";
+
+const AGENT_ICONS: Record<AgentId, LucideIcon> = {
+  zeus:   Zap,
+  athena: ScanLine,
+  hades:  FlaskConical,
+  apollo: Globe,
+  ares:   ShieldAlert,
+  hermes: Radio,
+};
 
 // ─── Agent Registry ────────────────────────────────────────────────────────────
 
@@ -682,8 +691,8 @@ export default function PantheonDashboard() {
                       animation: "entry-appear 0.25s ease-out forwards",
                     }}
                   >
-                    {/* Agent glyph */}
-                    <span className="text-base shrink-0 mt-0.5" style={{ lineHeight: 1 }}>{agent.glyph}</span>
+                    {/* Agent icon */}
+                    {(() => { const Icon = AGENT_ICONS[agent.id]; return <Icon size={14} color={agent.color} className="shrink-0 mt-0.5" />; })()}
                     <div className="flex-1 min-w-0">
                       {/* Agent name + badge */}
                       <div className="flex items-center gap-1.5 mb-1 flex-wrap">
