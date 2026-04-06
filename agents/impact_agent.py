@@ -30,30 +30,20 @@ Rules:
 
 async def _before_remote_agent(callback_context: CallbackContext) -> None:
     await emit_event(
-        EventType.HANDOFF,
-        agent=AgentName.APOLLO,
-        payload={
-            "from": "apollo",
-            "to": "impact_agent",
-            "protocol": "a2a",
-        },
+        EventType.HANDOFF.value,
+        agent=AgentName.APOLLO.value,
+        payload='{"from": "apollo", "to": "impact_agent", "protocol": "a2a"}',
     )
     await emit_event(
-        EventType.AGENT_ACTIVATED,
-        payload={
-            "agent_name": "impact_agent",
-            "protocol": "a2a",
-        },
+        EventType.AGENT_ACTIVATED.value,
+        payload='{"agent_name": "impact_agent", "protocol": "a2a"}',
     )
 
 
 async def _after_remote_agent(callback_context: CallbackContext) -> None:
     await emit_event(
-        EventType.AGENT_COMPLETED,
-        payload={
-            "agent_name": "impact_agent",
-            "protocol": "a2a",
-        },
+        EventType.AGENT_COMPLETED.value,
+        payload='{"agent_name": "impact_agent", "protocol": "a2a"}',
     )
 
 

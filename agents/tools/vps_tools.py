@@ -14,12 +14,12 @@ actual tool output on the real VPS before the demo.
 
 from __future__ import annotations
 
+import asyncio
 import csv
 import io
 import logging
 import os
 import re
-import time
 from typing import Any
 
 import paramiko
@@ -202,24 +202,22 @@ async def detonate_sample(sample_path: str) -> dict[str, Any]:  # Any: Detonatio
         sftp.close()
 
         # Start FakeNet-NG in a background process
-        # VALIDATE: confirm FakeNet path and Python availability on VPS
         await _exec(ssh, f"start /B python {_FAKENET_PATH} -l {_FAKENET_LOG}", timeout=5)
-        time.sleep(2)
+        await asyncio.sleep(2)
 
         # Start Procmon capture
-        # VALIDATE: confirm Procmon path on VPS
         await _exec(ssh, f"{_PROCMON_PATH} /AcceptEula /Quiet /Minimized /BackingFile {_CAPTURE_PML}")
-        time.sleep(1)
+        await asyncio.sleep(1)
 
         # Detonate
         await _exec(ssh, f"wscript.exe {remote_sample}", timeout=_DETONATION_TIMEOUT + 5)
-        time.sleep(5)
+        await asyncio.sleep(5)
 
         # Stop Procmon and export CSV
         await _exec(ssh, f"{_PROCMON_PATH} /Terminate")
-        time.sleep(2)
+        await asyncio.sleep(2)
         await _exec(ssh, f"{_PROCMON_PATH} /OpenLog {_CAPTURE_PML} /SaveAs {_CAPTURE_CSV}")
-        time.sleep(3)
+        await asyncio.sleep(3)
 
         sftp = ssh.open_sftp()
         with sftp.open(_CAPTURE_CSV, "r") as f:

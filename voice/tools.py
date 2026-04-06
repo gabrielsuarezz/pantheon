@@ -20,13 +20,50 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-_SAMPLES_DIR = Path(os.getenv(
-    "SAMPLES_DIR", "/Users/sairamen/projects/pantheon/MALWARE"
-))
+_SAMPLES_DIR = Path(os.getenv("SAMPLES_DIR", "/tmp/samples"))
+# Repo-local malware corpus — used as demo fallback when SAMPLES_DIR is empty.
+_REPO_MALWARE_DIR = Path(__file__).resolve().parents[1] / "MALWARE"
 
 # How long to poll for a completed report before returning partial results.
 _POLL_TIMEOUT = 90
 _POLL_INTERVAL = 3
+
+_KNOWN_DEMO_SAMPLE = "6108674530.JS.malicious"
+
+
+def _find_sample(filename: str) -> Path | None:
+    """Search SAMPLES_DIR then the repo MALWARE/ directory for a sample file."""
+    search_dirs = [_SAMPLES_DIR]
+    if _REPO_MALWARE_DIR.exists():
+        search_dirs.append(_REPO_MALWARE_DIR)
+
+    # 1. Exact filename match in any search directory.
+    if filename:
+        for d in search_dirs:
+            for candidate in d.rglob(filename):
+                if candidate.is_file():
+                    return candidate
+
+    # 2. Known demo sample.
+    for d in search_dirs:
+        known = d / _KNOWN_DEMO_SAMPLE
+        if known.exists() and known.is_file():
+            return known
+
+    # 3. Most recently modified file in any search directory.
+    for d in search_dirs:
+        try:
+            all_files = sorted(
+                (f for f in d.rglob("*") if f.is_file()),
+                key=lambda p: p.stat().st_mtime,
+                reverse=True,
+            )
+            if all_files:
+                return all_files[0]
+        except OSError:
+            continue
+
+    return None
 
 
 async def tool_analyze(parameters: dict[str, Any]) -> str:
@@ -39,27 +76,7 @@ async def tool_analyze(parameters: dict[str, Any]) -> str:
     Falls back to direct sandbox polling if the ADK pipeline fails.
     """
     filename = parameters.get("filename", "")
-
-    sample_path: Path | None = None
-    if filename:
-        for candidate in _SAMPLES_DIR.rglob(filename):
-            sample_path = candidate
-            break
-
-    if sample_path is None:
-        known_sample = _SAMPLES_DIR / "6108674530.JS.malicious"
-        if known_sample.exists() and known_sample.is_file():
-            sample_path = known_sample
-        else:
-            all_samples = sorted(
-                _SAMPLES_DIR.rglob("*"),
-                key=lambda p: p.stat().st_mtime,
-                reverse=True,
-            )
-            for s in all_samples:
-                if s.is_file():
-                    sample_path = s
-                    break
+    sample_path = _find_sample(filename)
 
     if sample_path is None:
         return json.dumps({

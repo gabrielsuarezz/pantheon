@@ -22,28 +22,40 @@ _SANDBOX_URL: str = os.getenv("SANDBOX_API_URL", "http://localhost:9000")
 
 
 async def emit_event(
-    event_type: str,
+    event_type: str | EventType,
     *,
-    agent: str | None = None,
+    agent: str | AgentName | None = None,
     tool: str | None = None,
     job_id: str | None = None,
-    payload: str | None = None,
+    payload: str | dict[str, Any] | None = None,
 ) -> None:
     """Fire-and-forget: emit a PantheonEvent to the Hephaestus EventBus.
 
-    LLM callers pass payload as a JSON string e.g. '{"from": "zeus", "to": "athena"}'.
-    Programmatic callers (bot.py, worker.py) also pass a JSON string via json.dumps().
+    Accepts both raw strings (from LLM callers) and enum values (from
+    programmatic callers like callbacks, worker.py, etc.).
+    Payload may be a JSON string or a dict — both are handled.
     """
     parsed: dict[str, Any] = {}
     if payload:
-        try:
-            parsed = json.loads(payload) if isinstance(payload, str) else payload
-        except (json.JSONDecodeError, TypeError):
+        if isinstance(payload, dict):
+            parsed = payload
+        elif isinstance(payload, str):
+            try:
+                parsed = json.loads(payload)
+            except (json.JSONDecodeError, TypeError):
+                parsed = {"raw": payload}
+        else:
             parsed = {"raw": str(payload)}
 
+    # Normalize enums to their string values for the Pydantic constructors.
+    et_str: str = event_type.value if isinstance(event_type, EventType) else event_type
+    agent_str: str | None = None
+    if agent is not None:
+        agent_str = agent.value if isinstance(agent, AgentName) else agent
+
     event = PantheonEvent(
-        type=EventType(event_type.lower()),
-        agent=AgentName(agent.lower()) if agent else None,
+        type=EventType(et_str.lower()),
+        agent=AgentName(agent_str.lower()) if agent_str else None,
         tool=tool,
         job_id=job_id,
         payload=parsed,

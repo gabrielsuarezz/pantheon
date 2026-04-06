@@ -10,9 +10,7 @@ import json
 import logging
 from pathlib import Path
 
-from agents.artemis import Artemis
 from agents.swarm import get_swarm
-from agents.zeus import zeus
 from agents.tools.event_tools import emit_event
 from sandbox.models import AgentName, EventType
 
@@ -34,6 +32,17 @@ async def _on_new_sample(path: Path) -> None:
     logger.info("Artemis passed new sample %s to Swarm (Job: %s)", path, job_id)
 
 
+async def _run_zeus_pipeline(prompt: str) -> str:
+    """Route a prompt through the Zeus ADK pipeline via Runner.run_async().
+
+    This is the correct way to invoke an ADK agent — Agent objects do not
+    have a .run() method; they must be driven through a Runner.
+    """
+    from gateway.runner import get_zeus_response
+
+    return await get_zeus_response("swarm-worker", prompt)
+
+
 async def swarm_worker_loop() -> None:
     """Continuously poll SwarmManager for new jobs and trigger Zeus."""
     swarm = await get_swarm()
@@ -51,30 +60,32 @@ async def swarm_worker_loop() -> None:
                 )
 
                 try:
-                    # Trigger the full loop through ADK agent 'zeus'
                     await emit_event(
-                        event_type=EventType.AGENT_ACTIVATED,
-                        agent=AgentName.ZEUS,
+                        event_type=EventType.AGENT_ACTIVATED.value,
+                        agent=AgentName.ZEUS.value,
                         job_id=job.job_id,
                         payload=json.dumps({"message": "Initializing orchestrator pipeline."}),
                     )
-                    
-                    await zeus.run(prompt)
+
+                    response = await _run_zeus_pipeline(prompt)
                     await swarm.complete_job(job.job_id)
-                    
+
                     await emit_event(
-                        event_type=EventType.ANALYSIS_COMPLETE,
-                        agent=AgentName.ZEUS,
+                        event_type=EventType.ANALYSIS_COMPLETE.value,
+                        agent=AgentName.ZEUS.value,
                         job_id=job.job_id,
-                        payload=json.dumps({"message": "Analysis loop complete."}),
+                        payload=json.dumps({
+                            "message": "Analysis loop complete.",
+                            "response_length": len(response),
+                        }),
                     )
 
                 except Exception as e:
                     logger.error("Zeus pipeline failed for job %s: %s", job.job_id, e)
                     await swarm.fail_job(job.job_id, str(e))
                     await emit_event(
-                        event_type=EventType.ERROR,
-                        agent=AgentName.ZEUS,
+                        event_type=EventType.ERROR.value,
+                        agent=AgentName.ZEUS.value,
                         job_id=job.job_id,
                         payload=json.dumps({"error": str(e)}),
                     )

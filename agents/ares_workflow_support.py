@@ -114,6 +114,8 @@ async def emit_workflow_event(
     branch: str | None = None,
     extra_payload: dict[str, Any] | None = None,
 ) -> None:
+    import json as _json
+
     payload: dict[str, Any] = {
         "workflow": workflow,
         "step": step,
@@ -123,8 +125,8 @@ async def emit_workflow_event(
     if extra_payload is not None:
         payload.update(extra_payload)
     await emit_event(
-        event_type,
-        agent=AgentName.ARES,
+        event_type.value,
+        agent=AgentName.ARES.value,
         job_id=get_job_id_from_state(callback_context.state),
-        payload=payload,
+        payload=_json.dumps(payload),
     )
