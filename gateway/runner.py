@@ -133,7 +133,7 @@ async def _run_via_adk(user_id: str, text: str) -> str:
         await emit_event(
             EventType.AGENT_COMPLETED.value,
             agent=AgentName.ZEUS.value,
-            payload={"status": "empty"},
+            payload='{"status": "empty"}',
         )
         return ""
 

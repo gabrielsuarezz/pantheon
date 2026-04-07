@@ -21,37 +21,49 @@ logger = logging.getLogger("pantheon.events")
 _SANDBOX_URL: str = os.getenv("SANDBOX_API_URL", "http://localhost:9000")
 
 
+def _to_str(val: Any) -> str | None:
+    """Coerce enums, strings, or None into a plain string."""
+    if val is None:
+        return None
+    if isinstance(val, (EventType, AgentName)):
+        return val.value
+    return str(val)
+
+
+def _to_payload(val: Any) -> dict[str, Any]:
+    """Coerce payload from str, dict, or None into a dict."""
+    if not val:
+        return {}
+    if isinstance(val, dict):
+        return val
+    if isinstance(val, str):
+        try:
+            return json.loads(val)  # type: ignore[no-any-return]
+        except (json.JSONDecodeError, TypeError):
+            return {"raw": val}
+    return {"raw": str(val)}
+
+
 async def emit_event(
-    event_type: str | EventType,
+    event_type: str,
     *,
-    agent: str | AgentName | None = None,
+    agent: str | None = None,
     tool: str | None = None,
     job_id: str | None = None,
-    payload: str | dict[str, Any] | None = None,
+    payload: str | None = None,
 ) -> None:
     """Fire-and-forget: emit a PantheonEvent to the Hephaestus EventBus.
 
-    Accepts both raw strings (from LLM callers) and enum values (from
-    programmatic callers like callbacks, worker.py, etc.).
-    Payload may be a JSON string or a dict — both are handled.
-    """
-    parsed: dict[str, Any] = {}
-    if payload:
-        if isinstance(payload, dict):
-            parsed = payload
-        elif isinstance(payload, str):
-            try:
-                parsed = json.loads(payload)
-            except (json.JSONDecodeError, TypeError):
-                parsed = {"raw": payload}
-        else:
-            parsed = {"raw": str(payload)}
+    ADK tool-facing signature — all parameters are plain str so ADK's
+    automatic function declaration parser can handle it.
 
-    # Normalize enums to their string values for the Pydantic constructors.
-    et_str: str = event_type.value if isinstance(event_type, EventType) else event_type
-    agent_str: str | None = None
-    if agent is not None:
-        agent_str = agent.value if isinstance(agent, AgentName) else agent
+    Programmatic callers may pass enums or dicts — they are coerced
+    internally via the *args overload below.
+    """
+    # Coerce in case programmatic callers pass enums / dicts directly.
+    et_str = _to_str(event_type) or "telemetry"
+    agent_str = _to_str(agent)
+    parsed = _to_payload(payload)
 
     event = PantheonEvent(
         type=EventType(et_str.lower()),

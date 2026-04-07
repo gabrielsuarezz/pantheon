@@ -80,6 +80,15 @@ def _openrouter_litellm_model_id(model: str) -> str:
     return f"openrouter/{model}"
 
 
+def _max_tokens_for(model_id: str) -> int:
+    """Return the output token cap for the given model tier."""
+    if model_id == PRO_MODEL:
+        return MAX_OUTPUT_TOKENS_PRO
+    if model_id == FLASH_MODEL:
+        return MAX_OUTPUT_TOKENS_FLASH
+    return MAX_OUTPUT_TOKENS_LITE
+
+
 @lru_cache(maxsize=32)
 def litellm_for(model_id: str) -> LiteLlm:
     """Build a :class:`LiteLlm` instance configured for OpenRouter.
@@ -88,14 +97,7 @@ def litellm_for(model_id: str) -> LiteLlm:
     Authentication uses ``OPENROUTER_API_KEY`` at request time (LiteLLM reads the env var).
     """
     mid = _openrouter_litellm_model_id(model_id)
-    api_base = os.getenv("OPENROUTER_API_BASE", "https://openrouter.ai/api/v1").strip()
-    referer = os.getenv("OPENROUTER_HTTP_REFERER", "https://github.com/pantheon").strip()
-    title = os.getenv("OPENROUTER_TITLE", "Pantheon").strip()
     return LiteLlm(
         model=mid,
-        api_base=api_base or "https://openrouter.ai/api/v1",
-        headers={
-            "HTTP-Referer": referer,
-            "X-OpenRouter-Title": title,
-        },
+        max_tokens=_max_tokens_for(model_id),
     )
