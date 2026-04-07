@@ -34,12 +34,13 @@
       overscroll-behavior: none;
       -webkit-user-select: none;
       user-select: none;
+      background: #0a0e14 !important;
     }
 
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: var(--bg-primary);
-      color: var(--text-primary);
+      background: #0a0e14 !important;
+      color: #eaf0f6;
       display: flex;
       flex-direction: column;
     }
@@ -370,26 +371,27 @@
     }
 
     .msg.agent {
-      background: var(--bg-elevated);
-      border: 1px solid var(--border);
+      background: #1a2230;
+      border: 1px solid rgba(212, 168, 67, 0.15);
       border-bottom-left-radius: 4px;
-      color: var(--text-primary);
+      color: #eaf0f6;
       margin-right: auto;
     }
 
     .msg.user {
-      background: linear-gradient(135deg, rgba(212,168,67,0.14), rgba(212,168,67,0.06));
-      border: 1px solid rgba(212,168,67,0.18);
+      background: #2a2520 !important;
+      border: 1px solid rgba(212, 168, 67, 0.35) !important;
       border-bottom-right-radius: 4px;
+      color: #ffffff !important;
       margin-left: auto;
       text-align: right;
     }
 
     .msg.system {
-      background: rgba(212,168,67,0.06);
-      border: 1px dashed var(--border);
+      background: #161a10;
+      border: 1px dashed rgba(212, 168, 67, 0.25);
       border-radius: 12px;
-      color: var(--text-secondary);
+      color: #a8956e;
       margin: 4px auto 10px;
       max-width: 90%;
       text-align: center;
@@ -402,12 +404,13 @@
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.06em;
-      color: var(--text-secondary);
+      color: #8a7a5a;
       display: block;
       margin-bottom: 3px;
     }
 
-    .msg.agent .label { color: var(--gold); }
+    .msg.agent .label { color: #d4a843; }
+    .msg.user .label { color: #d4a843 !important; }
 
     /* Typing indicator */
     .typing-indicator {
@@ -666,7 +669,6 @@
     let conversation = null;
     let isActive = false;
     let isMuted = false;
-    let micStream = null;
     let timerInterval = null;
     let seconds = 0;
     let messageCount = 0;
@@ -778,12 +780,7 @@
       if (!conversation) return;
       isMuted = !isMuted;
 
-      // Mute the actual microphone tracks so no audio reaches ElevenLabs
-      if (micStream) {
-        micStream.getAudioTracks().forEach(track => {
-          track.enabled = !isMuted;
-        });
-      }
+      conversation.setMicMuted(isMuted);
 
       muteBtn.classList.toggle('muted', isMuted);
       micOnIcon.style.display = isMuted ? 'none' : 'block';
@@ -812,13 +809,34 @@
         }
 
         const { Conversation } = await import(
-          'https://cdn.jsdelivr.net/npm/@11labs/client@latest/+esm'
+          'https://cdn.jsdelivr.net/npm/@11labs/client@0.2.0/+esm'
         );
-
-        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
         conversation = await Conversation.startSession({
           agentId: agent_id,
+          clientTools: {
+            analyze: async (params) => {
+              toolCallActive = true;
+              setStatus('Agents working', 'processing');
+              setMode('processing');
+              addMessage('system', 'Swarm activated — analyze in progress...');
+              return 'Analysis started';
+            },
+            report: async (params) => {
+              toolCallActive = true;
+              setStatus('Agents working', 'processing');
+              setMode('processing');
+              addMessage('system', 'Swarm activated — report in progress...');
+              return 'Report generated';
+            },
+            status: async (params) => {
+              toolCallActive = true;
+              setStatus('Agents working', 'processing');
+              setMode('processing');
+              addMessage('system', 'Checking system status...');
+              return 'Systems operational';
+            },
+          },
           onConnect: () => {
             setCallUI(true);
             setStatus('Connected', 'connected');
@@ -832,19 +850,18 @@
             stopTimer();
             conversation = null;
             toolCallActive = false;
-            if (micStream) {
-              micStream.getTracks().forEach(t => t.stop());
-              micStream = null;
+          },
+          onMessage: (msg) => {
+            console.log('[Pantheon] onMessage:', JSON.stringify(msg));
+            const text = msg.message;
+            const role = msg.source === 'user' ? 'user' : 'agent';
+            if (text) {
+              addMessage(role, text);
             }
           },
-          onMessage: ({ message, source }) => {
-            if (message) {
-              addMessage(source === 'user' ? 'user' : 'agent', message);
-            }
-          },
-          onError: (error) => {
-            console.error('ElevenLabs error:', error);
-            setStatus(error.message || 'Error', 'error');
+          onError: (message, context) => {
+            console.error('ElevenLabs error:', message, context);
+            setStatus(typeof message === 'string' ? message : 'Error', 'error');
           },
           onModeChange: ({ mode }) => {
             if (mode === 'listening') {
@@ -861,14 +878,6 @@
               toolCallActive = false;
             }
           },
-          onToolCall: (toolCall) => {
-            // Agent is calling a backend tool — show processing state
-            toolCallActive = true;
-            const toolName = toolCall?.tool_name || toolCall?.name || 'agents';
-            setStatus('Agents working', 'processing');
-            setMode('processing');
-            addMessage('system', `Swarm activated — ${toolName} in progress...`);
-          },
         });
       } catch (err) {
         console.error(err);
@@ -882,10 +891,6 @@
       if (conversation) {
         try { await conversation.endSession(); } catch (e) { /* ok */ }
       }
-      if (micStream) {
-        micStream.getTracks().forEach(t => t.stop());
-        micStream = null;
-      }
       setCallUI(false);
       setStatus('Ended', '');
       setMode('idle');
@@ -898,17 +903,15 @@
       if (isActive) { endCall(); } else { startCall(); }
     });
 
-    // Telegram Mini App setup
+    // Telegram Mini App setup — keep the dark theme always; overriding
+    // --bg-primary with Telegram's light bg_color breaks text contrast.
     if (window.Telegram && window.Telegram.WebApp) {
       const tg = window.Telegram.WebApp;
       tg.expand();
       tg.ready();
       tg.disableVerticalSwipes();
-      if (tg.themeParams && tg.themeParams.bg_color) {
-        document.documentElement.style.setProperty(
-          '--bg-primary', tg.themeParams.bg_color
-        );
-      }
+      tg.setHeaderColor('#0a0e14');
+      tg.setBackgroundColor('#0a0e14');
     }
 
     // Prevent iOS bounce/rubber-band on the body
